@@ -250,13 +250,41 @@ const revItems=()=>[...revisions].map(k=>{const [type,iso]=k.split("|");return {
 // ---------- passeport : un tampon par pays et par mode réussi ----------
 const PASS_KEY="geoose-passeport", MODES=[["pays","🗺️"],["capitale","🏛️"],["drapeau","🚩"]];
 let passport={}; try{ passport=JSON.parse(store.get(PASS_KEY)||"{}")||{}; }catch(e){}
+let passDates={}; try{ passDates=JSON.parse(store.get(PASS_KEY+"-dates")||"{}")||{}; }catch(e){}
 const stamped=c=>(passport[c.iso]||[]).length>0;
 // renvoie 2 = nouveau pays, 1 = nouveau mode pour ce pays, 0 = déjà tamponné
 function addStamp(c,type){
   const a=passport[c.iso]||(passport[c.iso]=[]);
   if(a.includes(type)) return 0;
   a.push(type); store.set(PASS_KEY,JSON.stringify(passport));
+  if(!passDates[c.iso]){ passDates[c.iso]=new Date().toISOString().slice(0,10); store.set(PASS_KEY+"-dates",JSON.stringify(passDates)); }
   return a.length===1?2:1;
+}
+// ---------- dessin d'un tampon (SVG) : anneau à l'encre du continent, nom en arc, drapeau, étoiles, date ----------
+const INK={europe:"#2f62b0",afrique:"#c4502f",asie:"#b52d45",ameriques:"#23885a",oceanie:"#7a4bb0"};
+const MOIS=["JANV","FÉVR","MARS","AVR","MAI","JUIN","JUIL","AOÛT","SEPT","OCT","NOV","DÉC"];
+const hashIso=s=>[...s].reduce((h,ch)=>(h*31+ch.charCodeAt(0))%997,7);
+const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function stampSVG(c,{got=passport[c.iso]||[],date=passDates[c.iso]}={}){
+  const id="a"+c.iso, name=esc(c.nom.toUpperCase());
+  // arc de 240° (de 210° à -30°) pour le nom, rayon 46.5 ; taille de police selon la longueur
+  const r=46.5, a0=210*Math.PI/180, a1=-30*Math.PI/180;
+  const P=a=>`${(60+r*Math.cos(a)).toFixed(1)},${(60-r*Math.sin(a)).toFixed(1)}`;
+  const fs=Math.min(10.5,195/(c.nom.length*.66));
+  if(!got.length){
+    return `<svg viewBox="0 0 120 120" class="stampsvg off"><circle cx="60" cy="60" r="54" fill="none" stroke="#c3cad8" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="60" y="66" text-anchor="middle" font-size="34" class="fl">${flag(c.a2)}</text>
+<text x="60" y="94" text-anchor="middle" font-size="${Math.min(14,170/c.nom.length).toFixed(1)}" font-weight="800" fill="#97a1b5">${esc(c.nom)}</text></svg>`;
+  }
+  const ink=INK[c.cont]||"#2f62b0", rot=(hashIso(c.iso)%29)-14, n=got.length;
+  const d=date?date.split("-"):null, dateTxt=d?`${d[2]} ${MOIS[+d[1]-1]} ${d[0]}`:"";
+  const stars=[0,1,2].map(i=>`<text x="${48+i*12}" y="88" text-anchor="middle" font-size="10" fill="${i<n?ink:"none"}" stroke="${ink}" stroke-width=".8">★</text>`).join("");
+  return `<svg viewBox="0 0 120 120" class="stampsvg" style="transform:rotate(${rot}deg)">
+<defs><path id="${id}" d="M${P(a0)} A${r},${r} 0 1,1 ${P(a1)}"/><path id="${id}b" d="M${P(-150*Math.PI/180)} A${r},${r} 0 0,0 ${P(-30*Math.PI/180)}"/></defs>
+<g fill="none" stroke="${ink}"><circle cx="60" cy="60" r="56" stroke-width="3.2"/><circle cx="60" cy="60" r="38" stroke-width="1.4"/>${n===3?`<circle cx="60" cy="60" r="52.5" stroke-width="1" stroke-dasharray="2 2.4"/>`:""}</g>
+<text font-size="${fs.toFixed(1)}" font-weight="800" fill="${ink}" letter-spacing=".6"><textPath href="#${id}" startOffset="50%" text-anchor="middle">${name}</textPath></text>
+${dateTxt?`<text font-size="7" font-weight="700" fill="${ink}" letter-spacing=".8"><textPath href="#${id}b" startOffset="50%" text-anchor="middle">${dateTxt}</textPath></text>`:""}
+<text x="60" y="68" text-anchor="middle" font-size="30" class="fl">${flag(c.a2)}</text>${stars}</svg>`;
 }
 let passTab="europe";
 function renderPassport(){
@@ -266,13 +294,14 @@ function renderPassport(){
     const all=C.filter(c=>c.cont===k), got=all.filter(stamped).length;
     return `<button class="ptab${k===passTab?" on":""}" data-k="${k}">${v.e} ${v.nom}<small>${got}/${all.length}</small></button>`;
   }).join("");
-  $("pgrid").innerHTML=C.filter(c=>c.cont===passTab).map(c=>{
-    const got=passport[c.iso]||[];
-    return `<button class="stamp${got.length?" on":""}" data-iso="${c.iso}"><span class="f">${flag(c.a2)}</span><span class="n">${c.nom}</span><span class="m">${MODES.map(([t,e])=>`<i class="${got.includes(t)?"on":""}">${e}</i>`).join("")}</span></button>`;
-  }).join("");
+  $("pgrid").innerHTML=C.filter(c=>c.cont===passTab).map(c=>`<button class="stamp" data-iso="${c.iso}">${stampSVG(c)}</button>`).join("");
+  $("pgrid").scrollTop=0;
 }
 $("ptabs").addEventListener("click",e=>{const b=e.target.closest(".ptab"); if(b){passTab=b.dataset.k; renderPassport();}});
-$("pgrid").addEventListener("click",e=>{const b=e.target.closest(".stamp"); if(!b) return; const c=byKey.get(b.dataset.iso); say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`);});
+$("pgrid").addEventListener("click",e=>{
+  const b=e.target.closest(".stamp"); if(!b) return; const c=byKey.get(b.dataset.iso), got=passport[c.iso]||[];
+  say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`+(got.length?` ${got.length} étoile${got.length>1?"s":""} sur 3.`:""));
+});
 $("passbtn").onclick=()=>{unlock(); renderPassport(); $("passport").classList.remove("hidden");};
 $("passclose").onclick=()=>{$("passport").classList.add("hidden"); showBest();};
 
@@ -454,7 +483,7 @@ function reveal(){
   if(ok){
     if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; }
     const st=addStamp(c,q.type);
-    if(st){ game.stamps.push(c); stampMsg=st===2?`🛂 Nouveau tampon : ${c.nom} !`:`🛂 Tampon ${MODES.find(m=>m[0]===q.type)[1]} ajouté`; }
+    if(st){ game.stamps.push(c); stampMsg=st===2?`🛂 Nouveau tampon : ${c.nom} !`:`🛂 Nouvelle étoile pour ${c.nom} !`; }
   }
   else if(!revisions.has(rk)){ revisions.add(rk); revMsg="📚 Ajouté à tes révisions"; }
   else if(game.learn) revMsg="📚 On le reverra !";
@@ -482,6 +511,7 @@ function reveal(){
     $("rbonus").textContent=[res.map((r,p)=>`${P[p].name} : ${r.km===null?"pas joué":r.km===0?"pile dedans !":r.good?"bon pays":fmt(r.km)+" km"}`).join(" · "),stampMsg].filter(Boolean).join(" · ");
     $("rdetail").textContent=answer;
   }
+  $("rstamp").innerHTML=stampMsg?stampSVG(c):"";
   $("rfacttxt").textContent=FACTS[c.a2]||"";
   $("rfact").hidden=!FACTS[c.a2];
   $("result").classList.add("show");

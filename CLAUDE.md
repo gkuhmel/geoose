@@ -20,7 +20,7 @@ Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPh
 - `src/audio.js` : sons synthétisés en WebAudio (aucun fichier) + voix (`speechSynthesis`, fr-FR) ; un seul réglage son (`geoose-son`). iOS : `unlock()` au premier toucher.
 - `public/` : `manifest.webmanifest`, `sw.js` (hors ligne : page réseau d'abord, reste cache d'abord), `icons/` (générées depuis le dessin de l'oie), `_headers` (Cloudflare). Le SW ne s'enregistre qu'en https hors iframe ; dans l'artifact claude.ai, les liens manifeste/icônes ne se chargent simplement pas.
 - Continents : lignes `"@europe"`… dans `countries.js` ; `CONTINENTS` donne nom, emoji et cadrage de départ (`homeView`).
-- Passeport : `localStorage["geoose-passeport"]` = `{iso: [types réussis]}` ; tampon quand une question est réussie (même règle que les révisions).
+- Passeport : `localStorage["geoose-passeport"]` = `{iso: [types réussis]}` (+ `-dates` : date du 1er tampon) ; tampon quand une question est réussie (même règle que les révisions). `stampSVG` dessine le tampon (anneau à l'encre du continent, nom en arc, drapeau, ★ par mode, date, rotation fixe par pays) ; il s'abat aussi sur la carte de résultat (`#rstamp`). Le panneau passeport a une hauteur fixe : seul `#pgrid` défile (sinon iOS écrase les onglets).
 - Deux joueurs : même question pour les deux, chacun pose son oie à son tour (`submitTurn`), révélation après le 2e (`reveal`). Oie blanche / cendrée (`PLUME`), couleurs `PCOL`. Révisions et passeport ne suivent que le joueur 1 ; pas de record à deux.
 - Options et prénoms mémorisés (`geoose-options`, `geoose-noms`).
 
