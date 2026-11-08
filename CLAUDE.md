@@ -18,7 +18,8 @@ Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPh
 - `src/main.js` : tout le jeu (carte, gestes, manches, score, chrono, confettis).
 
 ## Points d'attention
-- Gestes : un tap seul ne fait rien (petit cercle d'aide), **double-tap** (< 400 ms, < 40 px) pose l'oie ; un glissement > 12 px est un pan. Détection maison via pointer events, indépendante de `d3.zoom`.
+- Gestes (façon GeoGuessr / Plans) : **tap simple** (< 12 px, < 500 ms) pose ou déplace l'oie, **Valider** confirme ; un glissement > 12 px est un pan. Appui sur l'oie (`.pin-hit`, r=34) + glisser = ajustement fin : l'oie se soulève de `LIFT` (70 px) au-dessus du doigt, viseur `.aim` à ses pattes, et `zoom.filter` bloque le pan pendant ce temps. Détection maison via pointer events.
+- Modes pays / drapeau : le pays sous l'oie est surligné (`gHover`, `countryAt` = bbox puis `geoContains`), sans afficher son nom.
 - Les écrans masqués (`.screen.hidden`) doivent rester `visibility:hidden` + `pointer-events:none` sur les enfants, sinon leurs boutons invisibles bloquent la carte (bug déjà rencontré).
 - Les marqueurs (oie, cible) sont en coordonnées carte avec `scale(1/k)` mis à jour au zoom (`placeMarkers`), sans les recréer (sinon les animations CSS rejouent).
 - Épaisseurs de traits : `calc(Npx / var(--k))` sur le groupe racine.

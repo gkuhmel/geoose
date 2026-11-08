@@ -68,6 +68,7 @@ function setLod(i){
   gCoast.selectAll("path").data(L.coast).join("path").attr("d",d=>d);
   gHalo2.selectAll("path").data(L.halo).join("path").attr("d",d=>d);
   gHalo.selectAll("path").data(L.halo).join("path").attr("d",d=>d);
+  drawHover();
 }
 const lodOfK=k=>k>=LOD_K[2]?2:k>=LOD_K[1]?1:0;
 // coloriage façon atlas : voisins de couleurs différentes
@@ -89,6 +90,7 @@ const gHalo2=root.append("g").attr("class","halo2");
 const gHalo=root.append("g").attr("class","halo");
 const gLand=root.append("g");
 const gCoast=root.append("g").attr("class","coast");
+const gHover=root.append("path").attr("class","hover");
 const gOcean=root.append("g");
 const gOver=root.append("g");
 const lands=gLand.selectAll("path").data(features).join("path").attr("class","land").attr("fill",(d,i)=>PAL[col[i]]);
@@ -119,7 +121,8 @@ function onZoom(t){
   placeMarkers();
 }
 function placeMarkers(){ gOver.selectAll(".mk").attr("transform",d=>{const [x,y]=projection(d);return `translate(${x},${y}) scale(${1/k})`;}); }
-const zoom=d3.zoom().on("zoom",e=>onZoom(e.transform)).on("end",()=>setLod(lodOfK(k)));
+// pas de pan quand le doigt attrape l'oie (c'est elle qu'on déplace)
+const zoom=d3.zoom().filter(e=>!e.target.closest?.(".pin-hit")&&(!e.ctrlKey||e.type==="wheel")&&!e.button).on("zoom",e=>onZoom(e.transform)).on("end",()=>setLod(lodOfK(k)));
 svg.call(zoom).on("dblclick.zoom",null);
 function viewOn(lon,lat,spanLon){
   const s=Math.max(1,360/spanLon); const [x,y]=projection([lon,lat]);
@@ -130,24 +133,68 @@ $("zin").onclick=()=>svg.transition().duration(300).call(zoom.scaleBy,1.8);
 $("zout").onclick=()=>svg.transition().duration(300).call(zoom.scaleBy,1/1.8);
 $("zworld").onclick=()=>svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(0,(H-MH)/2));
 
-// tap (sans glisser) = planter la flèche ; fonctionne souris + tactile
-const ptrs=new Map(); let multi=false;
-svg.on("pointerdown",e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,t:performance.now()}); if(ptrs.size>1) multi=true;});
+// ---------- gestes ----------
+// Tap simple (sans glisser) = poser / déplacer l'oie ; glisser = bouger la carte ; pincer = zoomer.
+// Appui sur l'oie puis glisser = ajuster finement : l'oie se soulève au-dessus du doigt (LIFT px)
+// pour que le doigt ne cache pas le point visé, marqué par un viseur à ses pattes.
+const LIFT=70;
+const ptrs=new Map(); let multi=false, drag=null;
+svg.on("pointerdown",e=>{
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,t:performance.now()}); if(ptrs.size>1){multi=true;endDrag();return;}
+  if(e.target.closest(".pin-hit")&&canPlay()&&game.guess){
+    const t=d3.zoomTransform(svg.node()), [fx,fy]=t.apply(projection(game.guess));
+    drag={id:e.pointerId,t0:performance.now(),ox:fx-e.clientX,oy:fy-e.clientY};
+    svg.classed("dragging",true);
+    try{svg.node().setPointerCapture(e.pointerId);}catch(_){}
+  }
+});
+svg.on("pointermove",e=>{
+  if(!drag||e.pointerId!==drag.id) return;
+  if(!canPlay()){endDrag();return;}
+  // décalage initial (là où on a attrapé l'oie) → oie soulevée au-dessus du doigt, en 150 ms
+  const a=Math.min(1,(performance.now()-drag.t0)/150);
+  const ox=drag.ox*(1-a), oy=drag.oy*(1-a)-LIFT*a;
+  const ll=screenToLL(e.clientX+ox,e.clientY+oy); if(!ll) return;
+  game.guess=ll; gOver.select(".mk.goose").datum(ll); placeMarkers(); updateHover();
+});
 svg.on("pointerup pointercancel",e=>{
   const p=ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
   const wasMulti=multi; if(ptrs.size===0) multi=false;
+  if(drag&&e.pointerId===drag.id){endDrag();return;}
   if(!p||wasMulti||e.type==="pointercancel") return;
-  const now=performance.now();
-  if(Math.hypot(e.clientX-p.x,e.clientY-p.y)>12||now-p.t>500){lastTap=null;return;} // c'était un glissement
-  if(lastTap&&now-lastTap.t<400&&Math.hypot(e.clientX-lastTap.x,e.clientY-lastTap.y)<40){
-    lastTap=null; placeGuess(e.clientX,e.clientY);
-  } else { lastTap={t:now,x:e.clientX,y:e.clientY}; tapHint(e.clientX,e.clientY); }
+  if(Math.hypot(e.clientX-p.x,e.clientY-p.y)>12||performance.now()-p.t>500) return; // c'était un glissement
+  if(e.target.closest(".pin-hit")) return; // simple tap sur l'oie : rien
+  placeGuess(e.clientX,e.clientY);
 });
-let lastTap=null;
-function tapHint(x,y){
-  if(!game||game.answered||!$("home").classList.contains("hidden")) return;
-  const d=document.createElement("div"); d.className="taphint"; d.style.left=x+"px"; d.style.top=y+"px";
-  document.body.appendChild(d); setTimeout(()=>d.remove(),450);
+function endDrag(){ if(!drag) return; drag=null; svg.classed("dragging",false); }
+const canPlay=()=>game&&!game.answered&&$("home").classList.contains("hidden");
+function screenToLL(cx,cy){
+  const [mx,my]=d3.zoomTransform(svg.node()).invert([cx,cy]);
+  if(my<0||my>MH) return null;
+  const ll=projection.invert([mx,my]); return ll&&!isNaN(ll[0])?ll:null;
+}
+
+// ---------- pays sous l'oie (surbrillance, modes pays / drapeau) ----------
+const fBounds=features.map(f=>d3.geoBounds(f));
+function countryAt(ll){
+  const [lon,lat]=ll;
+  for(let j=0;j<features.length;j++){
+    const f=features[j], b=fBounds[j]; if(f.id===undefined) continue;
+    if(lat<b[0][1]||lat>b[1][1]) continue;
+    if(b[0][0]<=b[1][0] ? (lon<b[0][0]||lon>b[1][0]) : (lon<b[0][0]&&lon>b[1][0])) continue;
+    if(d3.geoContains(f,ll)) return f.id;
+  }
+  return null;
+}
+let hoverId=null;
+function updateHover(){
+  const q=game&&game.list[game.i];
+  const id=q&&!game.answered&&game.guess&&q.type!=="capitale"?countryAt(game.guess):null;
+  if(id!==hoverId){hoverId=id;drawHover();}
+}
+function drawHover(){
+  if(!hoverId||lodIdx<0){gHover.attr("d",null);return;}
+  const L=lodCache[lodIdx]; gHover.attr("d",features.map((f,j)=>f.id===hoverId?L.lands[j]:"").join(""));
 }
 
 // ---------- jeu ----------
@@ -215,7 +262,7 @@ function nextRound(){
   $("hintbtn").textContent=q.type==="drapeau"?"💡 Voir le nom (points ÷ 2)":"💡 Indice (points ÷ 2)";
   $("qcard").classList.remove("swap"); void $("qcard").offsetWidth; $("qcard").classList.add("swap");
   $("qhint").textContent=""; $("hintbtn").hidden=q.type==="pays";
-  lands.classed("target",false);
+  lands.classed("target",false); updateHover();
   $("result").classList.remove("show");
   setGo("Valider 🎯",true,false);
   svg.transition().duration(700).call(zoom.transform,homeView());
@@ -243,14 +290,11 @@ function startTimer(){
 $("hintbtn").onclick=()=>{const c=game.list[game.i].c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=game.list[game.i].type==="drapeau"?`drapeau ${de(c)}${c.nom}`:`capitale ${de(c)}${c.nom}`;};
 
 function placeGuess(cx,cy){
-  if(!game||game.answered||!$("home").classList.contains("hidden")) return;
-  const t=d3.zoomTransform(svg.node());
-  const [mx,my]=t.invert([cx,cy]);
-  if(my<0||my>MH) return;
-  const ll=projection.invert([mx,my]); if(!ll||isNaN(ll[0])) return;
+  if(!canPlay()) return;
+  const ll=screenToLL(cx,cy); if(!ll) return;
   game.guess=ll; game.pinId=(game.pinId||0)+1;
   $("go").disabled=false; $("tip").style.opacity=0;
-  redrawOverlay();
+  redrawOverlay(); updateHover();
 }
 
 function distToFeature(f,p){
@@ -297,7 +341,7 @@ function validate(timeout){
   saveRev();
   game.total+=gained; game.answered=true; game.target=capPt; game.km=km;
   game.log.push({label:(q.type!=="capitale"?c.nom:c.cap),fl:flag(c.a2),pts:gained});
-  lands.classed("target",d=>d.id===c.iso);
+  lands.classed("target",d=>d.id===c.iso); endDrag(); updateHover();
   redrawOverlay();
   [...$("dots").children][game.i].className="done";
 
@@ -353,8 +397,13 @@ function redrawOverlay(){
     L.append("text").attr("y",-28).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",800).attr("font-size",17).attr("font-family","Baloo 2, sans-serif").text(flag(q.c.a2)+" "+label);
   }
   if(game.guess){
-        const g=gOver.append("g").attr("class","mk").datum(game.guess);
+    const g=gOver.append("g").attr("class","mk goose").datum(game.guess);
     g.append("ellipse").attr("rx",14).attr("ry",4).attr("fill","rgba(0,30,60,.28)");
+    // viseur (visible pendant qu'on fait glisser l'oie) : le point exact visé
+    const A=g.append("g").attr("class","aim");
+    A.append("circle").attr("r",11).attr("fill","rgba(255,255,255,.35)").attr("stroke","#ff6b4a").attr("stroke-width",2.5);
+    A.append("path").attr("d","M-17,0H-6M6,0H17M0,-17V-6M0,6V17").attr("stroke","#ff6b4a").attr("stroke-width",2.5).attr("stroke-linecap","round");
+    A.append("circle").attr("r",2.2).attr("fill","#ff6b4a");
     const p=g.append("g").attr("class","pin-inner").attr("data-id",game.pinId);
     const O="#2b3a55";
     p.append("path").attr("d","M-3,-11 L-4,0 M3,-11 L4,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
@@ -370,6 +419,8 @@ function redrawOverlay(){
     p.append("circle").attr("cx",15).attr("cy",-42.5).attr("r",1.5).attr("fill",O);
     p.append("ellipse").attr("cx",12.6).attr("cy",-38.6).attr("rx",1.8).attr("ry",1.1).attr("fill","#ffb3a7").attr("opacity",.8);
   }
+  // zone pour attraper l'oie au doigt (plus grande que le dessin)
+  if(game.guess&&!game.answered) gOver.select(".mk.goose").append("circle").attr("class","pin-hit").attr("cy",-22).attr("r",34);
   if(game.answered) gOver.selectAll(".pin-inner").style("animation","none");
   placeMarkers();
 }
@@ -408,7 +459,7 @@ function confetti(N){
   requestAnimationFrame(f);
 }
 
-function goHome(){cancelAnimationFrame(timerRAF);game=null;redrawOverlay();lands.classed("target",false);$("result").classList.remove("show");setGo("Valider 🎯",true,false);$("end").classList.add("hidden");$("home").classList.remove("hidden");showBest();}
+function goHome(){cancelAnimationFrame(timerRAF);game=null;endDrag();updateHover();redrawOverlay();lands.classed("target",false);$("result").classList.remove("show");setGo("Valider 🎯",true,false);$("end").classList.add("hidden");$("home").classList.remove("hidden");showBest();}
 $("startbtn").onclick=()=>startGame(false);
 $("learnbtn").onclick=()=>startGame(true);
 $("againbtn").onclick=()=>startGame(!!game?.learn);

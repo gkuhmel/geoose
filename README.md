@@ -24,5 +24,5 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
   - Pays / drapeau : 1 000 si l'oie est dans le pays, sinon distance à la frontière la plus proche.
   - Capitale : distance à la ville (≤ 50 km = pile dessus).
   - Indice (capitale → nom du pays, drapeau → nom du pays) : points ÷ 2.
-- **Gestes** : glisser à un doigt = déplacer la carte, pincer = zoomer, **double-tap = poser l'oie**.
+- **Gestes** : glisser à un doigt = déplacer la carte, pincer = zoomer, **toucher = poser l'oie**, **faire glisser l'oie** = viser finement (elle se soulève au-dessus du doigt, un viseur marque le point). En modes Pays / Drapeaux, le pays visé s'allume.
 - Records stockés en `localStorage` par mode / niveau / chrono ; révisions dans `geoose-revisions`.
