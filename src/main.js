@@ -10,7 +10,7 @@ const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 const fmt=n=>n.toLocaleString("fr-FR");
 const flag=a2=>String.fromCodePoint(...[...a2].map(c=>0x1F1E6+c.charCodeAt(0)-65));
-const de=c=>c.art==="l'"?"de l'":c.art==="les"?"des ":c.art==="le"?"du ":c.art==="la"?"de la ":"de ";
+const de=c=>c.art==="l'"?"de l'":c.art==="les"?"des ":c.art==="le"?"du ":c.art==="la"?"de la ":/^[AEIOUYÉÈÎ]/i.test(c.nom)?"d'":"de ";
 const dans=c=>c.art==="l'"?"en ":c.art==="les"?"aux ":c.art==="le"?"au ":c.art==="la"?"en ":"à ";
 
 // iOS : bloque le zoom de page (iPad)
@@ -20,8 +20,19 @@ document.addEventListener("dblclick",e=>e.preventDefault(),{passive:false});
 // ---------- données carte ----------
 const geoms = WORLD.objects.countries;
 geoms.geometries = geoms.geometries.filter(g=>g.id!=="010"); // sans Antarctique
+// territoires sans id dans world-atlas : rattachés au pays reconnu par l'ONU (ou id maison pour le Kosovo)
+const NOID={"Kosovo":"XK","N. Cyprus":"196","Somaliland":"706"};
+geoms.geometries.forEach(g=>{ if(g.id===undefined && NOID[g.properties?.name]) g.id=NOID[g.properties.name]; });
 const features = topojson.feature(WORLD,geoms).features;
-const byIso = new Map(features.map(f=>[f.id,f]));
+// plusieurs morceaux pour un même id (ex. Australie + îles Ashmore) : on les fusionne pour le calcul
+const byIso = new Map();
+for(const f of features){
+  if(f.id===undefined) continue;
+  const prev=byIso.get(f.id);
+  if(!prev){byIso.set(f.id,f);continue;}
+  const polys=g=>g.type==="Polygon"?[g.coordinates]:g.coordinates;
+  byIso.set(f.id,{type:"Feature",id:f.id,geometry:{type:"MultiPolygon",coordinates:[...polys(prev.geometry),...polys(f.geometry)]}});
+}
 const landMesh = topojson.merge(WORLD,geoms.geometries);
 const borders = topojson.mesh(WORLD,geoms,(a,b)=>a===b); // côtes
 // coloriage façon atlas : voisins de couleurs différentes
@@ -105,20 +116,51 @@ function tapHint(x,y){
 // ---------- jeu ----------
 let opts={mode:"pays",level:1,chrono:0};
 let game=null, timerRAF=0;
+// difficulté = renommée du pays / de la capitale / du drapeau (1 célèbre … 4 rareté)
+const tierOf=(c,type)=>c.tier[type];
+// ---------- révisions (mode apprentissage) ----------
+// clé "type|iso" : une question ratée (oie à plus de OK_KM, ou indice utilisé) y est ajoutée ;
+// une bonne réponse l'en retire.
+const OK_KM=150, REV_KEY="geoose-revisions";
+const byKey=new Map(C.map(c=>[c.iso,c]));
+const loadRev=()=>{try{const a=JSON.parse(store.get(REV_KEY)||"[]");return new Set(Array.isArray(a)?a:[]);}catch(e){return new Set();}};
+let revisions=loadRev();
+const saveRev=()=>store.set(REV_KEY,JSON.stringify([...revisions]));
+const revItems=()=>[...revisions].map(k=>{const [type,iso]=k.split("|");return {c:byKey.get(iso),type};}).filter(q=>q.c&&["pays","capitale","drapeau"].includes(q.type));
+function showRev(){
+  const n=revItems().length, b=$("learnbtn");
+  b.disabled=n===0;
+  $("learnn").textContent=n?`${n} question${n>1?"s":""} à revoir`:"aucune erreur à revoir 🎉";
+}
 document.querySelectorAll(".choices").forEach(g=>g.addEventListener("click",e=>{
   const b=e.target.closest(".choice"); if(!b) return;
   g.querySelectorAll(".choice").forEach(x=>x.classList.toggle("on",x===b));
   opts[g.dataset.k]= g.dataset.k==="mode"?b.dataset.v:+b.dataset.v; showBest();
 }));
-const bestKey=()=>`geofleche2-${opts.mode}-${opts.level}-${opts.chrono}`;
-function showBest(){const b=store.get(bestKey()); $("best").textContent=b?`🏆 Record : ${fmt(+b)} pts`:"";}
-showBest();
+const bestKey=()=>`geoose3-${opts.mode}-${opts.level}-${opts.chrono}`;
+function showBest(){const b=store.get(bestKey()); $("best").textContent=b?`🏆 Record : ${fmt(+b)} pts`:""; showRev();}
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 
-function startGame(){
-  const pool=shuffle(C.filter(c=>c.lvl<=opts.level)).slice(0,ROUNDS);
-  game={chrono:!!opts.chrono,list:pool.map(c=>({c,type:opts.mode==="mix"?["pays","capitale","drapeau"][Math.random()*3|0]:opts.mode})),i:0,total:0,log:[]};
-  $("dots").innerHTML="<i></i>".repeat(ROUNDS);
+// Tire ROUNDS questions dont la renommée correspond exactement au niveau choisi
+// (si le niveau n'en a pas assez, on complète avec les niveaux voisins).
+function pickQuestions(mode,level){
+  const types=mode==="mix"?["pays","capitale","drapeau"]:[mode];
+  const out=[], used=new Set();
+  for(const d of [0,1,-1,2,-2,3,-3]){
+    const lv=level+d; if(lv<1||lv>4) continue;
+    const cands=shuffle(C.flatMap(c=>types.filter(t=>tierOf(c,t)===lv).map(t=>({c,type:t}))));
+    for(const q of cands){ if(out.length>=ROUNDS) break; if(!used.has(q.c.iso)){used.add(q.c.iso);out.push(q);} }
+    if(out.length>=ROUNDS) break;
+  }
+  return shuffle(out);
+}
+
+function startGame(learn){
+  learn=learn===true;
+  const list=learn?shuffle(revItems()).slice(0,ROUNDS):pickQuestions(opts.mode,opts.level);
+  if(!list.length){ goHome(); return; }
+  game={chrono:!!opts.chrono,learn,n:list.length,list,i:0,total:0,log:[],learned:0};
+  $("dots").innerHTML="<i></i>".repeat(game.n);
   $("home").classList.add("hidden"); $("end").classList.add("hidden");
   $("clock").classList.toggle("on",game.chrono); $("timer").classList.toggle("on",game.chrono);
   nextRound();
@@ -127,7 +169,7 @@ function startGame(){
 function nextRound(){
   const q=game.list[game.i];
   Object.assign(game,{guess:null,answered:false,hint:false});
-  $("rlabel").textContent=`${game.i+1}/${ROUNDS}`;
+  $("rlabel").textContent=`${game.learn?"📚 ":""}${game.i+1}/${game.n}`;
   [...$("dots").children].forEach((d,i)=>{d.className=i<game.i?"done":i===game.i?"cur":""});
   $("scoreval").textContent=fmt(game.total);
   $("qlabel").textContent={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?"}[q.type];
@@ -189,7 +231,7 @@ const pointsFor=km=>km<=0?MAXPTS:Math.round(MAXPTS*Math.exp(-km/1200));
 $("go").onclick=()=>{
   if(!game) return;
   if(!game.answered) validate(false);
-  else {game.i++; if(game.i<ROUNDS) nextRound(); else endGame();}
+  else {game.i++; if(game.i<game.n) nextRound(); else endGame();}
 };
 
 function validate(timeout){
@@ -198,8 +240,10 @@ function validate(timeout){
   const q=game.list[game.i], c=q.c, f=byIso.get(c.iso), capPt=[c.lon,c.lat];
   let km=null, pts=0, bonus=0;
   if(game.guess){
-    km = q.type!=="capitale" ? Math.round(distToFeature(f,game.guess)*R) : Math.round(d3.geoDistance(game.guess,capPt)*R);
-    if(q.type==="capitale" && km<=50) km=0;
+    // pays absent de la carte (Tuvalu) : on mesure jusqu'à sa capitale
+    const byCap=q.type==="capitale"||!f;
+    km = byCap ? Math.round(d3.geoDistance(game.guess,capPt)*R) : Math.round(distToFeature(f,game.guess)*R);
+    if(byCap && km<=50) km=0;
     pts=pointsFor(km); if(game.hint) pts=Math.round(pts/2);
     if(game.chrono && !timeout){
       const left=Math.max(0,CHRONO_S-(performance.now()-game.t0)/1000);
@@ -207,6 +251,13 @@ function validate(timeout){
     }
   }
   const gained=pts+bonus;
+  // révisions : raté → à revoir ; réussi → appris
+  const rk=`${q.type}|${c.iso}`, ok=km!==null&&km<=OK_KM&&!game.hint;
+  let revMsg="";
+  if(ok){ if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; } }
+  else if(!revisions.has(rk)){ revisions.add(rk); revMsg="📚 Ajouté à tes révisions"; }
+  else if(game.learn) revMsg="📚 On le reverra !";
+  saveRev();
   game.total+=gained; game.answered=true; game.target=capPt; game.km=km;
   game.log.push({label:(q.type!=="capitale"?c.nom:c.cap),fl:flag(c.a2),pts:gained});
   lands.classed("target",d=>d.id===c.iso);
@@ -217,19 +268,19 @@ function validate(timeout){
   $("rflag").textContent=flag(c.a2);
   $("rmsg").textContent=msg;
   countUp($("rpts"),gained,"+"," pts");
-  $("rbonus").textContent=bonus?`⚡ dont +${bonus} bonus vitesse`:(game.hint&&game.guess?"💡 indice utilisé : points ÷ 2":"");
+  $("rbonus").textContent=[bonus?`⚡ dont +${bonus} bonus vitesse`:(game.hint&&game.guess?"💡 indice utilisé : points ÷ 2":""),revMsg].filter(Boolean).join(" · ");
   const where=`${dans(c)}${c.nom}`;
   $("rdetail").textContent = !game.guess ? (q.type!=="capitale"?`C'était ici : ${c.nom} (capitale ${c.cap})`:`${c.cap} est la capitale ${de(c)}${c.nom}`)
-    : q.type!=="capitale" ? (km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:`À ${fmt(km)} km de la frontière · capitale : ${c.cap}`)
+    : q.type!=="capitale" ? (km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
     : (km===0?`Tu as trouvé ${c.cap}, capitale ${de(c)}${c.nom} !`:`À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`);
   $("result").classList.add("show");
   countUp($("scoreval"),game.total,"","",game.total-gained);
-  setGo(game.i+1<ROUNDS?"Suivant ➜":"Voir mon score 🏁",false,true);
+  setGo(game.i+1<game.n?"Suivant ➜":"Voir mon score 🏁",false,true);
   if(km===0) confetti(60);
 
   // cadrage sur la flèche + la cible
   const pts2=[capPt]; if(game.guess) pts2.push(game.guess);
-  const fb=path.bounds(f), pb=path.bounds({type:"MultiPoint",coordinates:pts2});
+  const pb=path.bounds({type:"MultiPoint",coordinates:pts2}), fb=f?path.bounds(f):pb;
   let x0=Math.min(pb[0][0],fb[0][0]),y0=Math.min(pb[0][1],fb[0][1]),x1=Math.max(pb[1][0],fb[1][0]),y1=Math.max(pb[1][1],fb[1][1]);
   if(x1-x0>W*0.7){[[x0,y0],[x1,y1]]=pb;}
   const topH=$("qcard").getBoundingClientRect().bottom+10, botH=H-$("result").getBoundingClientRect().top+10;
@@ -287,14 +338,20 @@ function redrawOverlay(){
 }
 
 function endGame(){
-  const t=game.total, max=ROUNDS*(MAXPTS+(game.chrono?BONUS_MAX:0));
+  const t=game.total, max=game.n*(MAXPTS+(game.chrono?BONUS_MAX:0));
   $("final").textContent="0"; countUp($("final"),t,"","");
   $("outof").textContent=`points sur ${fmt(max)}`;
   const r=t/max, n=r>=.85?5:r>=.7?4:r>=.5?3:r>=.3?2:r>=.15?1:0;
   $("stars").innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<n?"on":""}" style="animation-delay:${.3+i*.15}s">★</i>`).join("");
   $("endtitle").textContent=["On s'entraîne encore ! 💪","Bon début ! 🙂","Pas mal du tout ! 👍","Très fort ! 🔥","Champion ! 🏆","Légende de la géo ! 🌟"][n];
-  const prev=+(store.get(bestKey())||0);
-  if(t>prev){store.set(bestKey(),t);$("newbest").textContent=prev?"🏆 Nouveau record !":"🏆 Premier record !";} else $("newbest").textContent=`Record : ${fmt(prev)}`;
+  if(game.learn){
+    const left=revItems().length;
+    $("newbest").textContent=(game.learned?`✅ ${game.learned} appris · `:"")+(left?`📚 encore ${left} à revoir`:"🎉 Plus rien à revoir !");
+  } else {
+    const prev=+(store.get(bestKey())||0);
+    if(t>prev){store.set(bestKey(),t);$("newbest").textContent=prev?"🏆 Nouveau record !":"🏆 Premier record !";} else $("newbest").textContent=`Record : ${fmt(prev)}`;
+  }
+  $("againbtn").textContent=game.learn?(revItems().length?"Continuer à réviser 📚":"Menu 🏠"):"Rejouer 🔁";
   const mx=Math.max(...game.log.map(l=>l.pts),1);
   $("recap").innerHTML=game.log.map(l=>`<div><span>${l.fl} ${l.label}</span><span style="display:flex;align-items:center;gap:8px"><i class="bar" style="width:${Math.round(60*l.pts/mx)}px;background:${l.pts>=650?"var(--good)":l.pts>=300?"var(--gold)":"var(--accent)"}"></i><b>${fmt(l.pts)}</b></span></div>`).join("");
   $("end").classList.remove("hidden");
@@ -314,10 +371,13 @@ function confetti(N){
   requestAnimationFrame(f);
 }
 
-$("startbtn").onclick=startGame;
-$("againbtn").onclick=startGame;
-$("menubtn").onclick=()=>{$("end").classList.add("hidden");$("home").classList.remove("hidden");showBest();};
-$("homebtn").onclick=()=>{cancelAnimationFrame(timerRAF);game=null;redrawOverlay();lands.classed("target",false);$("result").classList.remove("show");setGo("Valider 🎯",true,false);$("home").classList.remove("hidden");showBest();};
+function goHome(){cancelAnimationFrame(timerRAF);game=null;redrawOverlay();lands.classed("target",false);$("result").classList.remove("show");setGo("Valider 🎯",true,false);$("end").classList.add("hidden");$("home").classList.remove("hidden");showBest();}
+$("startbtn").onclick=()=>startGame(false);
+$("learnbtn").onclick=()=>startGame(true);
+$("againbtn").onclick=()=>startGame(!!game?.learn);
+$("menubtn").onclick=goHome;
+$("homebtn").onclick=goHome;
+showBest();
 let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{layout();svg.call(zoom.transform,game&&!game.answered?homeView():d3.zoomTransform(svg.node()));},150);});
 layout();
 svg.call(zoom.transform,homeView());

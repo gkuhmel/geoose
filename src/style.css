@@ -103,6 +103,9 @@ button{font-family:inherit;cursor:pointer}
 .choice.on{background:#fff1ec;box-shadow:0 4px 0 var(--accent),inset 0 0 0 3px var(--accent)}
 .choice:active{transform:translateY(3px);box-shadow:0 1px 0 #dde3ef}
 #best{margin-top:12px;font-size:16px;font-weight:700;color:var(--muted);min-height:22px}
+#learnbtn{margin-top:10px;font-size:19px;padding:9px 13px}
+#learnbtn small{display:block;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
+#learnbtn:disabled{opacity:.55;transform:none;box-shadow:0 3px 0 #c9d3e6}
 .stars{font-size:clamp(44px,12vw,60px);letter-spacing:6px;line-height:1;margin:4px 0}
 .stars i{font-style:normal;display:inline-block;color:#d7dde9;text-shadow:0 3px 0 #b9c2d4}
 .stars i.on{color:var(--gold);text-shadow:0 3px 0 var(--gold-d);animation:pop .5s cubic-bezier(.3,1.6,.5,1) both}
