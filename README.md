@@ -18,7 +18,7 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 
 - **Modes** : Pays · Capitales · Drapeaux · Mélange — 10 manches, parmi **tous les pays du monde** (197 : ONU + Vatican, Palestine, Kosovo, Taïwan).
 - **Niveaux** (par *renommée*, pas par nombre de pays) : 🐣 Facile (les célèbres) · 🦊 Moyen (assez connus) · 🦅 Difficile (moins connus) · 🐉 Expert (les raretés). Chaque pays a une renommée par mode : l'Australie est facile, mais Canberra est « difficile » ; le drapeau du Luxembourg est « expert ».
-- **📚 Apprentissage** : ne repose que les questions ratées (tous modes confondus, chacune dans son mode d'origine). Ratée = oie à plus de 150 km ou indice utilisé ; une bonne réponse la retire de la liste (en partie normale aussi).
+- **📚 Apprentissage** : ne repose que les questions ratées (tous modes confondus, chacune dans son mode d'origine). Ratée = oie à plus de 150 km ou indice utilisé (pour une capitale, l'oie dans le bon pays n'est pas ratée) ; une bonne réponse la retire de la liste (en partie normale aussi).
 - **Partie** : Tranquille ou Chrono (15 s par question, bonus vitesse jusqu'à +300).
 - **Score** : jusqu'à 1 000 pts par manche, `1000 × e^(−km/1200)`.
   - Pays / drapeau : 1 000 si l'oie est dans le pays, sinon distance à la frontière la plus proche.

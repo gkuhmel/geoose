@@ -14,7 +14,7 @@ Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPh
 - `src/style.css` : styles (glassmorphism, animations, media query ≥ 700px pour iPad).
 - `src/countries.js` : les 197 pays — `[nom, article, capitale, lat, lon, iso numérique world-atlas, iso alpha-2, renommée pays, renommée capitale, renommée drapeau]`. Renommée 1 (célèbre) → 4 (rareté) = niveau de difficulté, **par mode**. L'alpha-2 sert au drapeau emoji. Ids spéciaux : Kosovo = `XK` (assigné dans `main.js`, sans id dans world-atlas), Tuvalu absent de la carte 50m → distance à la capitale.
 - Niveaux : un niveau tire les questions dont la renommée **égale** le niveau (complète avec les niveaux voisins s'il en manque), pas un volume cumulatif.
-- Apprentissage : clés `type|iso` dans `localStorage["geoose-revisions"]` ; ajout si raté (> 150 km ou indice), retrait si réussi.
+- Apprentissage : clés `type|iso` dans `localStorage["geoose-revisions"]` ; ajout si raté (> 150 km ou indice), retrait si réussi. En mode capitale, poser l'oie dans le bon pays compte comme réussi pour les révisions (les points restent calculés sur la distance à la capitale).
 - `src/main.js` : tout le jeu (carte, gestes, manches, score, chrono, confettis).
 
 ## Points d'attention

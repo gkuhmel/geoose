@@ -333,7 +333,9 @@ function validate(timeout){
   }
   const gained=pts+bonus;
   // révisions : raté → à revoir ; réussi → appris
-  const rk=`${q.type}|${c.iso}`, ok=km!==null&&km<=OK_KM&&!game.hint;
+  // capitale : l'oie dans le bon pays suffit pour ne pas réviser (les points restent selon la distance à la ville)
+  const goodCountry = q.type==="capitale" && game.guess && f && d3.geoContains(f,game.guess);
+  const rk=`${q.type}|${c.iso}`, ok=km!==null&&(km<=OK_KM||goodCountry)&&!game.hint;
   let revMsg="";
   if(ok){ if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; } }
   else if(!revisions.has(rk)){ revisions.add(rk); revMsg="📚 Ajouté à tes révisions"; }
@@ -345,7 +347,7 @@ function validate(timeout){
   redrawOverlay();
   [...$("dots").children][game.i].className="done";
 
-  const msg = !game.guess?"⏰ Temps écoulé !":km===0?"🪿 Atterrissage parfait !":pts>=850?"😮 Presque !":pts>=650?"🔥 Super !":pts>=400?"👍 Pas mal !":pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
+  const msg = !game.guess?"⏰ Temps écoulé !":km===0?"🪿 Atterrissage parfait !":goodCountry&&pts<850?"✅ Bon pays !":pts>=850?"😮 Presque !":pts>=650?"🔥 Super !":pts>=400?"👍 Pas mal !":pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
   $("rflag").textContent=flag(c.a2);
   $("rmsg").textContent=msg;
   countUp($("rpts"),gained,"+"," pts");
@@ -353,7 +355,9 @@ function validate(timeout){
   const where=`${dans(c)}${c.nom}`;
   $("rdetail").textContent = !game.guess ? (q.type!=="capitale"?`C'était ici : ${c.nom} (capitale ${c.cap})`:`${c.cap} est la capitale ${de(c)}${c.nom}`)
     : q.type!=="capitale" ? (km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
-    : (km===0?`Tu as trouvé ${c.cap}, capitale ${de(c)}${c.nom} !`:`À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`);
+    : km===0 ? `Tu as trouvé ${c.cap}, capitale ${de(c)}${c.nom} !`
+    : goodCountry ? `Ton oie est bien ${dans(c)}${c.nom}, à ${fmt(km)} km de ${c.cap}`
+    : `À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`;
   $("result").classList.add("show");
   countUp($("scoreval"),game.total,"","",game.total-gained);
   setGo(game.i+1<game.n?"Suivant ➜":"Voir mon score 🏁",false,true);
