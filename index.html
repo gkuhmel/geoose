@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#5fb3e0">
+<title>Geoose</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<svg id="map"></svg>
+
+<div id="hud">
+  <div id="topbar">
+    <button id="homebtn" class="glass" aria-label="Menu">🏠</button>
+    <div class="pill glass"><span id="rlabel">1/10</span><span id="dots"></span></div>
+    <div class="pill glass" id="score"><span id="clock">⏱️ 15</span> ⭐ <b id="scoreval">0</b></div>
+  </div>
+  <div id="qcard" class="glass">
+    <div id="qlabel">Trouve le pays</div>
+    <div id="qname">…</div>
+    <div id="qhint"></div>
+    <button id="hintbtn" hidden>💡 Indice (points ÷ 2)</button>
+    <div id="timer"></div>
+  </div>
+</div>
+
+<div id="tip">👆👆 Double-tape pour faire atterrir l'oie · glisse pour bouger</div>
+
+<div id="zoombtns">
+  <button id="zin" class="glass">＋</button>
+  <button id="zout" class="glass">－</button>
+  <button id="zworld" class="glass">🌍</button>
+</div>
+
+<div id="bottom">
+  <div id="result" class="glass">
+    <div id="rtop"><span id="rflag"></span><span id="rmsg"></span></div>
+    <div id="rpts"></div>
+    <div id="rbonus"></div>
+    <div id="rdetail"></div>
+  </div>
+  <button class="btn" id="go" disabled>Valider 🎯</button>
+</div>
+
+<div class="screen" id="home">
+  <div class="globe">🪿</div>
+  <div class="logo">Ge<span>oo</span>se</div>
+  <div class="sub">Fais atterrir l'oie au bon endroit !</div>
+  <div class="panel glass">
+    <div class="group"><h3>Je cherche</h3>
+      <div class="choices" data-k="mode">
+        <button class="choice on" data-v="pays"><span class="e">🗺️</span>Pays</button>
+        <button class="choice" data-v="capitale"><span class="e">🏛️</span>Capitales</button>
+        <button class="choice" data-v="drapeau"><span class="e">🚩</span>Drapeaux</button>
+        <button class="choice" data-v="mix"><span class="e">🎲</span>Mélange</button>
+      </div></div>
+    <div class="group"><h3>Niveau</h3>
+      <div class="choices" data-k="level">
+        <button class="choice on" data-v="1"><span class="e">🐣</span>Facile<small>les connus</small></button>
+        <button class="choice" data-v="2"><span class="e">🦊</span>Moyen<small>+ 30 pays</small></button>
+        <button class="choice" data-v="3"><span class="e">🦅</span>Expert<small>83 pays</small></button>
+      </div></div>
+    <div class="group"><h3>Partie</h3>
+      <div class="choices" data-k="chrono">
+        <button class="choice on" data-v="0"><span class="e">🧭</span>Tranquille<small>prends ton temps</small></button>
+        <button class="choice" data-v="1"><span class="e">⏱️</span>Chrono<small>15 s · bonus vitesse</small></button>
+      </div></div>
+    <button class="btn" id="startbtn" style="margin-top:6px">C'est parti ! 🚀</button>
+    <div id="best"></div>
+    <div style="margin-top:6px;font-size:14px;font-weight:600;color:var(--muted)">Bon voyage, Nils ! 🌍</div>
+  </div>
+</div>
+
+<div class="screen hidden" id="end">
+  <div class="panel glass">
+    <div id="endtitle" style="font-size:28px;font-weight:800">Partie terminée !</div>
+    <div class="stars" id="stars"></div>
+    <div class="bigscore" id="final">0</div>
+    <div style="color:var(--muted);font-weight:700" id="outof">points sur 10 000</div>
+    <div id="newbest" style="font-weight:800;color:var(--good-d);min-height:26px;font-size:18px"></div>
+    <div id="recap"></div>
+    <div class="stack">
+      <button class="btn" id="againbtn">Rejouer 🔁</button>
+      <button class="btn ghost" id="menubtn">Menu</button>
+    </div>
+  </div>
+</div>
+<canvas id="confetti"></canvas>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
