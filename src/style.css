@@ -23,9 +23,16 @@ button{font-family:inherit;cursor:pointer}
 @keyframes dash{to{stroke-dashoffset:calc(-15px / var(--k,1))}}
 .pin-inner{animation:drop .45s cubic-bezier(.3,1.6,.5,1) both;transform-box:fill-box}
 .pin-hit{fill:#000;fill-opacity:0;pointer-events:all;cursor:grab}
-.aim{opacity:0;transition:opacity .15s;pointer-events:none}
-#map.dragging .aim{opacity:1}
-#map.dragging .goose ellipse:first-child{opacity:0}
+/* oie en vol pendant qu'on la fait glisser : elle monte, bat des ailes, son ombre marque l'atterrissage */
+.goose .fly{transition:transform .18s cubic-bezier(.3,1.4,.5,1)}
+#map.dragging .goose .fly{transform:translateY(-28px)}
+.goose .shadow{fill:rgba(0,30,60,.28);transform-box:fill-box;transform-origin:center;transition:transform .18s,fill .18s}
+#map.dragging .goose .shadow{fill:rgba(0,30,60,.42);stroke:#fff;stroke-width:1.5;transform:scale(1.25)}
+.goose .trail{stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-dasharray:1 5;opacity:0;transition:opacity .18s}
+#map.dragging .goose .trail{opacity:.9}
+.goose .wing{transform-box:fill-box;transform-origin:85% 60%}
+#map.dragging .goose .wing{animation:flap .22s ease-in-out infinite alternate}
+@keyframes flap{from{transform:rotate(8deg)}to{transform:rotate(-38deg)}}
 .hover{fill:#fff;fill-opacity:.35;stroke:var(--accent);stroke-width:calc(2.5px / var(--k,1));stroke-linejoin:round;pointer-events:none}
 @keyframes drop{from{transform:translateY(-40px);opacity:0}to{transform:none;opacity:1}}
 .ripple{transform-box:fill-box;transform-origin:center;animation:ripple 1.6s ease-out infinite}

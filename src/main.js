@@ -135,9 +135,9 @@ $("zworld").onclick=()=>svg.transition().duration(700).call(zoom.transform,d3.zo
 
 // ---------- gestes ----------
 // Tap simple (sans glisser) = poser / déplacer l'oie ; glisser = bouger la carte ; pincer = zoomer.
-// Appui sur l'oie puis glisser = ajuster finement : l'oie se soulève au-dessus du doigt (LIFT px)
-// pour que le doigt ne cache pas le point visé, marqué par un viseur à ses pattes.
-const LIFT=70;
+// Appui sur l'oie puis glisser = ajuster finement : l'oie s'envole et son ombre, LIFT px au-dessus
+// du doigt (pour que le doigt ne la cache pas), marque le point exact où elle va atterrir.
+const LIFT=60;
 const ptrs=new Map(); let multi=false, drag=null;
 svg.on("pointerdown",e=>{
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,t:performance.now()}); if(ptrs.size>1){multi=true;endDrag();return;}
@@ -398,13 +398,10 @@ function redrawOverlay(){
   }
   if(game.guess){
     const g=gOver.append("g").attr("class","mk goose").datum(game.guess);
-    g.append("ellipse").attr("rx",14).attr("ry",4).attr("fill","rgba(0,30,60,.28)");
-    // viseur (visible pendant qu'on fait glisser l'oie) : le point exact visé
-    const A=g.append("g").attr("class","aim");
-    A.append("circle").attr("r",11).attr("fill","rgba(255,255,255,.35)").attr("stroke","#ff6b4a").attr("stroke-width",2.5);
-    A.append("path").attr("d","M-17,0H-6M6,0H17M0,-17V-6M0,6V17").attr("stroke","#ff6b4a").attr("stroke-width",2.5).attr("stroke-linecap","round");
-    A.append("circle").attr("r",2.2).attr("fill","#ff6b4a");
-    const p=g.append("g").attr("class","pin-inner").attr("data-id",game.pinId);
+    // ombre au sol = point exact d'atterrissage ; pendant le glissé l'oie s'envole au-dessus d'elle
+    g.append("ellipse").attr("class","shadow").attr("rx",14).attr("ry",4.5);
+    g.append("path").attr("class","trail").attr("d","M0,-4V-26");
+    const p=g.append("g").attr("class","fly").append("g").attr("class","pin-inner").attr("data-id",game.pinId);
     const O="#2b3a55";
     p.append("path").attr("d","M-3,-11 L-4,0 M3,-11 L4,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
     p.append("path").attr("d","M-8,0 L-1,0 M1,0 L8,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
@@ -413,7 +410,7 @@ function redrawOverlay(){
     p.append("path").attr("d","M10,-22 C11,-30 9,-35 13,-41").attr("fill","none").attr("stroke",O).attr("stroke-width",9.6).attr("stroke-linecap","round");
     p.append("path").attr("d","M10,-22 C11,-30 9,-35 13,-41").attr("fill","none").attr("stroke","#fff").attr("stroke-width",6).attr("stroke-linecap","round");
     p.append("ellipse").attr("cx",-1).attr("cy",-17.5).attr("rx",13.2).attr("ry",8.2).attr("fill","#fff");
-    p.append("path").attr("d","M-11,-21 C-6,-27 5,-26 7,-19 C1,-15 -7,-15 -11,-21 Z").attr("fill","#cfd8e6").attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
+    p.append("path").attr("class","wing").attr("d","M-11,-21 C-6,-27 5,-26 7,-19 C1,-15 -7,-15 -11,-21 Z").attr("fill","#cfd8e6").attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
     p.append("circle").attr("cx",13.5).attr("cy",-41).attr("r",6.2).attr("fill","#fff").attr("stroke",O).attr("stroke-width",1.8);
     p.append("path").attr("d","M18.5,-43.5 L27,-40.5 L18.5,-37.5 Z").attr("fill","#ff9a2e").attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
     p.append("circle").attr("cx",15).attr("cy",-42.5).attr("r",1.5).attr("fill",O);
