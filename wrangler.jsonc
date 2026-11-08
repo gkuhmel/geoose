@@ -1,0 +1,11 @@
+// Déploiement Cloudflare Workers (assets statiques) : `npm run deploy`
+// Vite construit dist/index.html (un seul fichier autonome), Wrangler le publie.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "geoose",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

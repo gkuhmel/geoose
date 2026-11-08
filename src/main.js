@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
+import { presimplify, simplify } from "topojson-simplify";
 import WORLD from "world-atlas/countries-50m.json";
 import { COUNTRIES } from "./countries.js";
 import "./style.css";
@@ -33,8 +34,42 @@ for(const f of features){
   const polys=g=>g.type==="Polygon"?[g.coordinates]:g.coordinates;
   byIso.set(f.id,{type:"Feature",id:f.id,geometry:{type:"MultiPolygon",coordinates:[...polys(prev.geometry),...polys(f.geometry)]}});
 }
-const landMesh = topojson.merge(WORLD,geoms.geometries);
-const borders = topojson.mesh(WORLD,geoms,(a,b)=>a===b); // côtes
+// ---------- niveaux de détail (perf) ----------
+// Le dessin utilise une géométrie simplifiée selon le zoom (le jeu, lui, garde la géométrie exacte).
+// Seuils en px² à l'écran : PX_LAND pour les pays, PX_HALO (bien plus grossier) pour les halos côtiers,
+// qui sont de gros traits flous et coûtaient ~80 % du rendu en pleine résolution.
+const PRE = presimplify(WORLD);
+const LOD_K=[1,3,10], PX_LAND=.5, PX_HALO=6;
+let lodCache=[], lodIdx=-1;
+function lodFor(i){
+  if(lodCache[i]) return lodCache[i];
+  const ppd=W/360*LOD_K[i], wt=px=>px/(ppd*ppd);
+  const t=simplify(PRE,wt(PX_LAND)), g=t.objects.countries, th=simplify(PRE,wt(PX_HALO));
+  return lodCache[i]={
+    lands: topojson.feature(t,g).features.map(f=>path(f)),
+    coast: tiles(topojson.mesh(t,g,(a,b)=>a===b)),
+    halo: tiles(topojson.mesh(th,th.objects.countries,(a,b)=>a===b)),
+  };
+}
+// découpe un trait (côtes) en tuiles de 30° : chaque tuile est un <path> séparé,
+// que le navigateur ignore quand elle est hors écran (au lieu de retracer le monde entier).
+function tiles(mesh){
+  const b=new Map();
+  for(const line of mesh.coordinates){
+    const [lon,lat]=line[0], key=Math.floor(lon/30)+","+Math.floor(lat/30);
+    if(!b.has(key)) b.set(key,[]); b.get(key).push(line);
+  }
+  return [...b.values()].map(ls=>path({type:"MultiLineString",coordinates:ls}));
+}
+function setLod(i){
+  if(i===lodIdx) return; lodIdx=i;
+  const L=lodFor(i);
+  lands.attr("d",(d,j)=>L.lands[j]);
+  gCoast.selectAll("path").data(L.coast).join("path").attr("d",d=>d);
+  gHalo2.selectAll("path").data(L.halo).join("path").attr("d",d=>d);
+  gHalo.selectAll("path").data(L.halo).join("path").attr("d",d=>d);
+}
+const lodOfK=k=>k>=LOD_K[2]?2:k>=LOD_K[1]?1:0;
 // coloriage façon atlas : voisins de couleurs différentes
 const PAL=["#fbe3a8","#cdeaa9","#f9c9b9","#dccff3","#bfe6e0","#f6d6e8","#ffe8c2"];
 const nb=topojson.neighbors(geoms.geometries);
@@ -47,13 +82,13 @@ features.map((f,i)=>i).sort((a,b)=>nb[b].length-nb[a].length).forEach(i=>{
 
 const svg=d3.select("#map");
 const projection=d3.geoMercator();
-const path=d3.geoPath(projection);
+const path=d3.geoPath(projection).digits(2);
 const root=svg.append("g");
 const gGrat=root.append("path").attr("class","grat");
-const gHalo2=root.append("path").attr("class","halo2");
-const gHalo=root.append("path").attr("class","halo");
+const gHalo2=root.append("g").attr("class","halo2");
+const gHalo=root.append("g").attr("class","halo");
 const gLand=root.append("g");
-const gCoast=root.append("path").attr("class","coast");
+const gCoast=root.append("g").attr("class","coast");
 const gOcean=root.append("g");
 const gOver=root.append("g");
 const lands=gLand.selectAll("path").data(features).join("path").attr("class","land").attr("fill",(d,i)=>PAL[col[i]]);
@@ -67,22 +102,24 @@ function layout(){
   const top=projection([0,83.5])[1]; projection.translate([W/2,-top]);
   MH=projection([0,-58])[1];
   gGrat.attr("d",path(d3.geoGraticule().step([15,15]).extentMinor([[-180,-80],[180.01,85]])()));
-  gHalo2.attr("d",path(landMesh)); gHalo.attr("d",path(landMesh));
-  lands.attr("d",path); gCoast.attr("d",path(borders));
-  gOcean.selectAll("text").data(OCEANS).join("text").attr("class","ocean-label");
+  lodCache=[]; lodIdx=-1; setLod(lodOfK(k));
+  gOcean.selectAll("text").data(OCEANS).join("text").attr("class","ocean-label").attr("font-size",d=>d[3]?13:15).text(d=>d[0]);
   zoom.translateExtent([[0,0],[W,MH]]).scaleExtent([1,40]);
   redrawOverlay();
+  k=-1; // la projection a changé : le prochain onZoom recalcule étiquettes et marqueurs
 }
 function onZoom(t){
-  root.attr("transform",t); k=t.k; root.style("--k",k);
+  root.attr("transform",t);
+  if(t.k===k) return; // simple glissement : rien d'autre à recalculer
+  k=t.k; root.style("--k",k);
   gOcean.selectAll("text").each(function(d){
-    const [x,y]=projection([d[1],d[2]]); const minK=d[3]||0;
-    d3.select(this).attr("transform",`translate(${x},${y}) scale(${1/k})`).attr("font-size",d[3]?13:15).text(d[0]).style("display",k>=minK?null:"none");
+    const [x,y]=projection([d[1],d[2]]);
+    this.setAttribute("transform",`translate(${x},${y}) scale(${1/k})`); this.style.display=k>=(d[3]||0)?"":"none";
   });
   placeMarkers();
 }
 function placeMarkers(){ gOver.selectAll(".mk").attr("transform",d=>{const [x,y]=projection(d);return `translate(${x},${y}) scale(${1/k})`;}); }
-const zoom=d3.zoom().on("zoom",e=>onZoom(e.transform));
+const zoom=d3.zoom().on("zoom",e=>onZoom(e.transform)).on("end",()=>setLod(lodOfK(k)));
 svg.call(zoom).on("dblclick.zoom",null);
 function viewOn(lon,lat,spanLon){
   const s=Math.max(1,360/spanLon); const [x,y]=projection([lon,lat]);
@@ -381,3 +418,5 @@ showBest();
 let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{layout();svg.call(zoom.transform,game&&!game.answered?homeView():d3.zoomTransform(svg.node()));},150);});
 layout();
 svg.call(zoom.transform,homeView());
+// pré-calcule les niveaux de détail pendant l'écran d'accueil (évite un à-coup au premier zoom)
+setTimeout(()=>lodFor(1),300); setTimeout(()=>lodFor(2),900);

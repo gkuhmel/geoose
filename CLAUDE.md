@@ -4,6 +4,8 @@ Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPh
 
 ## Stack
 - Vite + JS vanilla (pas de framework), `vite-plugin-singlefile` pour un build en un seul HTML.
+- Déploiement Cloudflare Workers (assets statiques) : `wrangler.jsonc` → `dist/`, `npm run deploy` (= `vite build && wrangler deploy`).
+- `topojson-simplify` : niveaux de détail du dessin.
 - `d3` (projection Mercator, zoom/pan via `d3.zoom`, géodésie `geoDistance`/`geoContains`), `topojson-client`, carte `world-atlas/countries-50m.json` (Antarctique retirée).
 - Police Google Fonts « Baloo 2 » (seule ressource externe).
 
@@ -20,4 +22,10 @@ Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPh
 - Les écrans masqués (`.screen.hidden`) doivent rester `visibility:hidden` + `pointer-events:none` sur les enfants, sinon leurs boutons invisibles bloquent la carte (bug déjà rencontré).
 - Les marqueurs (oie, cible) sont en coordonnées carte avec `scale(1/k)` mis à jour au zoom (`placeMarkers`), sans les recréer (sinon les animations CSS rejouent).
 - Épaisseurs de traits : `calc(Npx / var(--k))` sur le groupe racine.
+- **Perf carte** (le pan saccadait) : le coût est le raster SVG, surtout les halos côtiers (gros traits). Donc :
+  dessin en géométrie simplifiée selon le zoom (`lodFor`, 3 niveaux, changés à la fin du geste, en cache),
+  halos sur un contour très simplifié, halos et côtes découpés en tuiles de 30° (culling hors écran),
+  `onZoom` ne fait rien d'autre que le `transform` quand k ne change pas (simple glissement).
+  Le gameplay (`byIso`, `geoContains`, distances) garde la géométrie 50m exacte.
+  Mesurer avec une trace Chromium (somme des `RasterTask`) plutôt qu'un compteur rAF, qui ne voit rien en headless.
 - Tester en 390×844 (iPhone) et 820×1180 / 1180×820 (iPad), avec événements tactiles.

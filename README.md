@@ -8,7 +8,11 @@ Jeu de géographie pour enfant (web mobile, iPhone / iPad) : un pays, une capita
 npm install
 npm run dev      # serveur local (--host : accessible depuis l'iPhone sur le même Wi-Fi)
 npm run build    # dist/index.html autonome (un seul fichier)
+npm run cf:dev   # build + serveur local Cloudflare (wrangler dev)
+npm run deploy   # build + publication sur Cloudflare Workers (wrangler deploy)
 ```
+
+Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoose`). Première fois : `npx wrangler login`.
 
 ## Règles
 

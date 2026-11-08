@@ -11,10 +11,10 @@ button{font-family:inherit;cursor:pointer}
 
 /* ---------- carte ---------- */
 #map{position:fixed;inset:0;width:100%;height:100%;display:block}
-.halo{fill:none;stroke:#d9f2fb;stroke-opacity:.9;stroke-linejoin:round;stroke-width:calc(6px / var(--k,1))}
-.halo2{fill:none;stroke:#bfe7f6;stroke-opacity:.9;stroke-linejoin:round;stroke-width:calc(14px / var(--k,1))}
+.halo{fill:none;stroke-linecap:round;stroke:#d9f2fb;stroke-opacity:.9;stroke-linejoin:round;stroke-width:calc(6px / var(--k,1))}
+.halo2{fill:none;stroke-linecap:round;stroke:#bfe7f6;stroke-opacity:.9;stroke-linejoin:round;stroke-width:calc(14px / var(--k,1))}
 .land{stroke:#fff;stroke-width:calc(1.1px / var(--k,1));stroke-linejoin:round;transition:fill .4s}
-.coast{fill:none;stroke:#3d7fa6;stroke-opacity:.55;stroke-width:calc(1px / var(--k,1))}
+.coast{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke:#3d7fa6;stroke-opacity:.55;stroke-width:calc(1px / var(--k,1))}
 .land.target{fill:#5fd39a !important;animation:glow 1.2s ease-in-out infinite alternate}
 @keyframes glow{from{fill:#5fd39a}to{fill:#8ee6b8}}
 .grat{fill:none;stroke:#fff;stroke-opacity:.22;stroke-width:calc(1px / var(--k,1))}
