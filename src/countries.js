@@ -1,4 +1,5 @@
 // Tous les pays du monde (193 membres de l'ONU + Vatican, Palestine, Kosovo, Taïwan).
+// Les lignes "@continent" ouvrent chaque section.
 // Format : [nom, article, capitale, lat, lon, iso numérique (world-atlas), iso alpha-2 (drapeau),
 //           renommée pays, renommée capitale, renommée drapeau]
 // Renommée 1 = célèbre (Facile) … 4 = rareté (Expert). La difficulté vient de là, pas du nombre de pays :
@@ -6,6 +7,7 @@
 // La renommée capitale / drapeau est propre à chaque mode (ex. Australie = 1, mais Canberra = 3).
 export const COUNTRIES = [
 // ---------- Europe ----------
+"@europe",
 ["France","la","Paris",48.8566,2.3522,"250","FR",1,1,1],
 ["Espagne","l'","Madrid",40.4168,-3.7038,"724","ES",1,1,1],
 ["Italie","l'","Rome",41.9028,12.4964,"380","IT",1,1,1],
@@ -57,6 +59,7 @@ export const COUNTRIES = [
 ["Arménie","l'","Erevan",40.1792,44.4991,"051","AM",4,4,4],
 ["Azerbaïdjan","l'","Bakou",40.4093,49.8671,"031","AZ",4,4,4],
 // ---------- Afrique ----------
+"@afrique",
 ["Égypte","l'","Le Caire",30.0444,31.2357,"818","EG",1,1,2],
 ["Maroc","le","Rabat",34.0209,-6.8416,"504","MA",1,2,1],
 ["Algérie","l'","Alger",36.7538,3.0588,"012","DZ",1,1,2],
@@ -112,6 +115,7 @@ export const COUNTRIES = [
 ["Seychelles","les","Victoria",-4.6191,55.4513,"690","SC",4,4,4],
 ["Maurice","","Port-Louis",-20.1609,57.5012,"480","MU",4,4,4],
 // ---------- Asie & Moyen-Orient ----------
+"@asie",
 ["Chine","la","Pékin",39.9042,116.4074,"156","CN",1,1,1],
 ["Japon","le","Tokyo",35.6762,139.6503,"392","JP",1,1,1],
 ["Inde","l'","New Delhi",28.6139,77.209,"356","IN",1,2,2],
@@ -157,6 +161,7 @@ export const COUNTRIES = [
 ["Kirghizistan","le","Bichkek",42.8746,74.5698,"417","KG",4,4,4],
 ["Tadjikistan","le","Douchanbé",38.5598,68.787,"762","TJ",4,4,4],
 // ---------- Amériques ----------
+"@ameriques",
 ["États-Unis","les","Washington",38.9072,-77.0369,"840","US",1,1,1],
 ["Canada","le","Ottawa",45.4215,-75.6972,"124","CA",1,2,1],
 ["Mexique","le","Mexico",19.4326,-99.1332,"484","MX",1,1,2],
@@ -193,6 +198,7 @@ export const COUNTRIES = [
 ["Antigua-et-Barbuda","","Saint John's",17.1274,-61.8468,"028","AG",4,4,4],
 ["Dominique","la","Roseau",15.3092,-61.3794,"212","DM",4,4,4],
 // ---------- Océanie ----------
+"@oceanie",
 ["Australie","l'","Canberra",-35.2809,149.13,"036","AU",1,3,2],
 ["Nouvelle-Zélande","la","Wellington",-41.2865,174.7762,"554","NZ",2,3,3],
 ["Papouasie-Nouvelle-Guinée","la","Port Moresby",-9.4438,147.1803,"598","PG",3,4,4],
@@ -207,4 +213,18 @@ export const COUNTRIES = [
 ["Palaos","les","Ngerulmud",7.5006,134.6242,"585","PW",4,4,4],
 ["Îles Marshall","les","Majuro",7.0897,171.3803,"584","MH",4,4,4],
 ["Micronésie","la","Palikir",6.9248,158.161,"583","FM",4,4,4],
-].map(a=>({nom:a[0],art:a[1],cap:a[2],lat:a[3],lon:a[4],iso:a[5],a2:a[6],tier:{pays:a[7],capitale:a[8],drapeau:a[9]}}));
+].reduce((acc,a)=>{
+  if(typeof a==="string"){acc.cont=a.slice(1);return acc;}
+  acc.list.push({nom:a[0],art:a[1],cap:a[2],lat:a[3],lon:a[4],iso:a[5],a2:a[6],tier:{pays:a[7],capitale:a[8],drapeau:a[9]},cont:acc.cont});
+  return acc;
+},{cont:null,list:[]}).list;
+
+// Continents : nom affiché, emoji, cadrage de départ [lon, lat, largeur en degrés (portrait), (paysage)]
+export const CONTINENTS = {
+  monde:     {nom:"Monde",     e:"🌍", view:[10,46,42,62]},
+  europe:    {nom:"Europe",    e:"🏰", view:[15,50,38,58]},
+  afrique:   {nom:"Afrique",   e:"🦁", view:[18,2,72,95]},
+  asie:      {nom:"Asie",      e:"🐼", view:[88,30,80,115]},
+  ameriques: {nom:"Amériques", e:"🦅", view:[-80,8,110,150]},
+  oceanie:   {nom:"Océanie",   e:"🦘", view:[155,-15,70,100]},
+};

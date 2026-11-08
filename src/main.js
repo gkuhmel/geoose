@@ -2,7 +2,9 @@ import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import { presimplify, simplify } from "topojson-simplify";
 import WORLD from "world-atlas/countries-50m.json";
-import { COUNTRIES } from "./countries.js";
+import { COUNTRIES, CONTINENTS } from "./countries.js";
+import { FACTS } from "./facts.js";
+import { sfx, say, unlock, soundOn, setSound } from "./audio.js";
 import "./style.css";
 const C = COUNTRIES;
 
@@ -128,7 +130,11 @@ function viewOn(lon,lat,spanLon){
   const s=Math.max(1,360/spanLon); const [x,y]=projection([lon,lat]);
   return d3.zoomIdentity.translate(W/2,H/2).scale(s).translate(-x,-y);
 }
-function homeView(){ return W>H ? viewOn(12,47,W>1000?55:70) : viewOn(10,46,W>600?55:42); }
+// cadrage de départ : le continent choisi (Monde = centré sur l'Europe, comme avant)
+function homeView(){
+  const [lon,lat,sp,sl]=CONTINENTS[game?game.view:opts.cont].view;
+  return viewOn(lon,lat, W>H ? (W>1000?sl:sl*1.2) : (W>600?sp*1.3:sp));
+}
 $("zin").onclick=()=>svg.transition().duration(300).call(zoom.scaleBy,1.8);
 $("zout").onclick=()=>svg.transition().duration(300).call(zoom.scaleBy,1/1.8);
 $("zworld").onclick=()=>svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(0,(H-MH)/2));
@@ -197,65 +203,142 @@ function drawHover(){
   const L=lodCache[lodIdx]; gHover.attr("d",features.map((f,j)=>f.id===hoverId?L.lands[j]:"").join(""));
 }
 
-// ---------- jeu ----------
-let opts={mode:"pays",level:1,chrono:0};
+// ---------- options (mémorisées) ----------
+const OPTS_KEY="geoose-options", NAMES_KEY="geoose-noms";
+let opts={mode:"pays",level:1,chrono:0,cont:"monde",players:1};
+try{ Object.assign(opts,JSON.parse(store.get(OPTS_KEY)||"{}")); }catch(e){}
+if(!CONTINENTS[opts.cont]) opts.cont="monde";
 let game=null, timerRAF=0;
+const NUM_KEYS=new Set(["level","chrono","players"]);
+// joueurs (mode à deux) : couleur du badge / du trait, et plumage de l'oie (blanche / cendrée)
+const PCOL=["#4aa3d6","#f08a24"];
+const PLUME=[{body:"#fff",wing:"#cfd8e6",tail:"#e9eef5"},{body:"#dcc7a6",wing:"#a98b66",tail:"#c9b08c"}];
+
+$("conts").innerHTML=Object.entries(CONTINENTS).map(([k,v])=>`<button class="choice" data-v="${k}"><span class="e">${v.e}</span>${v.nom}</button>`).join("");
+document.querySelectorAll(".choices").forEach(g=>{
+  const key=g.dataset.k;
+  g.querySelectorAll(".choice").forEach(x=>x.classList.toggle("on",x.dataset.v===String(opts[key])));
+  g.addEventListener("click",e=>{
+    const b=e.target.closest(".choice"); if(!b) return;
+    g.querySelectorAll(".choice").forEach(x=>x.classList.toggle("on",x===b));
+    opts[key]=NUM_KEYS.has(key)?+b.dataset.v:b.dataset.v;
+    store.set(OPTS_KEY,JSON.stringify(opts));
+    if(key==="cont"&&!game) svg.transition().duration(700).call(zoom.transform,homeView());
+    showBest();
+  });
+});
+// prénoms (mode à deux)
+try{ const n=JSON.parse(store.get(NAMES_KEY)||"null")||["Nils","Papa"]; $("name1").value=n[0]; $("name2").value=n[1]; }catch(e){ $("name1").value="Nils"; $("name2").value="Papa"; }
+["name1","name2"].forEach(id=>$(id).addEventListener("input",()=>store.set(NAMES_KEY,JSON.stringify([$("name1").value,$("name2").value]))));
+["name1","name2"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")e.target.blur();}));
+
 // difficulté = renommée du pays / de la capitale / du drapeau (1 célèbre … 4 rareté)
 const tierOf=(c,type)=>c.tier[type];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const byKey=new Map(C.map(c=>[c.iso,c]));
+const nomAvecArticle=c=>c.art==="l'"?"l'"+c.nom:c.art?c.art+" "+c.nom:c.nom;
+
 // ---------- révisions (mode apprentissage) ----------
 // clé "type|iso" : une question ratée (oie à plus de OK_KM, ou indice utilisé) y est ajoutée ;
-// une bonne réponse l'en retire.
+// une bonne réponse l'en retire. Capitale : l'oie dans le bon pays compte comme réussie.
 const OK_KM=150, REV_KEY="geoose-revisions";
-const byKey=new Map(C.map(c=>[c.iso,c]));
-const loadRev=()=>{try{const a=JSON.parse(store.get(REV_KEY)||"[]");return new Set(Array.isArray(a)?a:[]);}catch(e){return new Set();}};
-let revisions=loadRev();
+const loadSet=k=>{try{const a=JSON.parse(store.get(k)||"[]");return new Set(Array.isArray(a)?a:[]);}catch(e){return new Set();}};
+let revisions=loadSet(REV_KEY);
 const saveRev=()=>store.set(REV_KEY,JSON.stringify([...revisions]));
 const revItems=()=>[...revisions].map(k=>{const [type,iso]=k.split("|");return {c:byKey.get(iso),type};}).filter(q=>q.c&&["pays","capitale","drapeau"].includes(q.type));
-function showRev(){
-  const n=revItems().length, b=$("learnbtn");
-  b.disabled=n===0;
-  $("learnn").textContent=n?`${n} question${n>1?"s":""} à revoir`:"aucune erreur à revoir 🎉";
-}
-document.querySelectorAll(".choices").forEach(g=>g.addEventListener("click",e=>{
-  const b=e.target.closest(".choice"); if(!b) return;
-  g.querySelectorAll(".choice").forEach(x=>x.classList.toggle("on",x===b));
-  opts[g.dataset.k]= g.dataset.k==="mode"?b.dataset.v:+b.dataset.v; showBest();
-}));
-const bestKey=()=>`geoose3-${opts.mode}-${opts.level}-${opts.chrono}`;
-function showBest(){const b=store.get(bestKey()); $("best").textContent=b?`🏆 Record : ${fmt(+b)} pts`:""; showRev();}
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 
-// Tire ROUNDS questions dont la renommée correspond exactement au niveau choisi
+// ---------- passeport : un tampon par pays et par mode réussi ----------
+const PASS_KEY="geoose-passeport", MODES=[["pays","🗺️"],["capitale","🏛️"],["drapeau","🚩"]];
+let passport={}; try{ passport=JSON.parse(store.get(PASS_KEY)||"{}")||{}; }catch(e){}
+const stamped=c=>(passport[c.iso]||[]).length>0;
+// renvoie 2 = nouveau pays, 1 = nouveau mode pour ce pays, 0 = déjà tamponné
+function addStamp(c,type){
+  const a=passport[c.iso]||(passport[c.iso]=[]);
+  if(a.includes(type)) return 0;
+  a.push(type); store.set(PASS_KEY,JSON.stringify(passport));
+  return a.length===1?2:1;
+}
+let passTab="europe";
+function renderPassport(){
+  const n=C.filter(stamped).length;
+  $("ptotal").textContent=`${n} pays visité${n>1?"s":""} sur ${C.length}`;
+  $("ptabs").innerHTML=Object.entries(CONTINENTS).filter(([k])=>k!=="monde").map(([k,v])=>{
+    const all=C.filter(c=>c.cont===k), got=all.filter(stamped).length;
+    return `<button class="ptab${k===passTab?" on":""}" data-k="${k}">${v.e} ${v.nom}<small>${got}/${all.length}</small></button>`;
+  }).join("");
+  $("pgrid").innerHTML=C.filter(c=>c.cont===passTab).map(c=>{
+    const got=passport[c.iso]||[];
+    return `<button class="stamp${got.length?" on":""}" data-iso="${c.iso}"><span class="f">${flag(c.a2)}</span><span class="n">${c.nom}</span><span class="m">${MODES.map(([t,e])=>`<i class="${got.includes(t)?"on":""}">${e}</i>`).join("")}</span></button>`;
+  }).join("");
+}
+$("ptabs").addEventListener("click",e=>{const b=e.target.closest(".ptab"); if(b){passTab=b.dataset.k; renderPassport();}});
+$("pgrid").addEventListener("click",e=>{const b=e.target.closest(".stamp"); if(!b) return; const c=byKey.get(b.dataset.iso); say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`);});
+$("passbtn").onclick=()=>{unlock(); renderPassport(); $("passport").classList.remove("hidden");};
+$("passclose").onclick=()=>{$("passport").classList.add("hidden"); showBest();};
+
+// ---------- son ----------
+function showSound(){ document.querySelectorAll(".sound").forEach(b=>{ b.firstChild.textContent=soundOn()?"🔊":"🔇"; b.classList.toggle("off",!soundOn()); }); }
+document.querySelectorAll(".sound").forEach(b=>b.addEventListener("click",()=>{ setSound(!soundOn()); unlock(); showSound(); if(soundOn()) sfx.plop(); }));
+document.addEventListener("pointerdown",unlock,{once:true,capture:true});
+showSound();
+
+// ---------- accueil ----------
+const bestKey=()=>`geoose4-${opts.mode}-${opts.level}-${opts.chrono}-${opts.cont}`;
+function showBest(){
+  const solo=opts.players===1, b=store.get(bestKey());
+  $("best").textContent=solo&&b?`🏆 Record : ${fmt(+b)} pts`:"";
+  $("names").hidden=solo;
+  const n=revItems().length;
+  $("learnbtn").disabled=n===0;
+  $("learnn").textContent=n?`${n} question${n>1?"s":""} à revoir`:"aucune erreur à revoir 🎉";
+  $("passn").textContent=`${C.filter(stamped).length} / ${C.length}`;
+}
+
+// Tire ROUNDS questions du continent choisi dont la renommée correspond exactement au niveau
 // (si le niveau n'en a pas assez, on complète avec les niveaux voisins).
-function pickQuestions(mode,level){
+function pickQuestions(mode,level,cont){
   const types=mode==="mix"?["pays","capitale","drapeau"]:[mode];
+  const pool=C.filter(c=>cont==="monde"||c.cont===cont);
   const out=[], used=new Set();
   for(const d of [0,1,-1,2,-2,3,-3]){
     const lv=level+d; if(lv<1||lv>4) continue;
-    const cands=shuffle(C.flatMap(c=>types.filter(t=>tierOf(c,t)===lv).map(t=>({c,type:t}))));
+    const cands=shuffle(pool.flatMap(c=>types.filter(t=>tierOf(c,t)===lv).map(t=>({c,type:t}))));
     for(const q of cands){ if(out.length>=ROUNDS) break; if(!used.has(q.c.iso)){used.add(q.c.iso);out.push(q);} }
     if(out.length>=ROUNDS) break;
   }
   return shuffle(out);
 }
 
+// ---------- partie ----------
 function startGame(learn){
-  learn=learn===true;
-  const list=learn?shuffle(revItems()).slice(0,ROUNDS):pickQuestions(opts.mode,opts.level);
+  learn=learn===true; unlock();
+  const list=learn?shuffle(revItems()).slice(0,ROUNDS):pickQuestions(opts.mode,opts.level,opts.cont);
   if(!list.length){ goHome(); return; }
-  game={chrono:!!opts.chrono,learn,n:list.length,list,i:0,total:0,log:[],learned:0};
+  const np=learn?1:opts.players, names=[$("name1").value.trim()||"Joueur 1",$("name2").value.trim()||"Joueur 2"];
+  game={chrono:!!opts.chrono,learn,n:list.length,list,i:0,view:learn?"monde":opts.cont,learned:0,stamps:[],
+    players:Array.from({length:np},(_,p)=>({name:np>1?names[p]:"",total:0,log:[]}))};
   $("dots").innerHTML="<i></i>".repeat(game.n);
-  $("home").classList.add("hidden"); $("end").classList.add("hidden");
+  ["home","end","passport"].forEach(id=>$(id).classList.add("hidden"));
   $("clock").classList.toggle("on",game.chrono); $("timer").classList.toggle("on",game.chrono);
+  setScore();
   nextRound();
 }
+const duo=()=>game.players.length>1;
 
 function nextRound(){
-  const q=game.list[game.i];
-  Object.assign(game,{guess:null,answered:false,hint:false});
+  Object.assign(game,{turn:0,recs:[],results:null,answered:false});
   $("rlabel").textContent=`${game.learn?"📚 ":""}${game.i+1}/${game.n}`;
   [...$("dots").children].forEach((d,i)=>{d.className=i<game.i?"done":i===game.i?"cur":""});
-  $("scoreval").textContent=fmt(game.total);
+  startTurn();
+}
+
+// un tour = un joueur pose son oie (à deux : même question pour les deux, réponse révélée après le 2e)
+function startTurn(){
+  const q=game.list[game.i];
+  Object.assign(game,{guess:null,hint:false});
+  const P=game.players[game.turn];
+  $("turn").hidden=!duo();
+  if(duo()) $("turn").innerHTML=`<i style="background:${PCOL[game.turn]}"></i>${P.name}, à toi !`;
   $("qlabel").textContent={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?"}[q.type];
   $("qname").textContent={pays:q.c.nom,capitale:q.c.cap,drapeau:flag(q.c.a2)}[q.type];
   $("qname").classList.toggle("flagq",q.type==="drapeau");
@@ -266,11 +349,25 @@ function nextRound(){
   $("result").classList.remove("show");
   setGo("Valider 🎯",true,false);
   svg.transition().duration(700).call(zoom.transform,homeView());
-  $("tip").style.opacity=game.i<3?1:0;
+  $("tip").style.opacity=game.i<3&&game.turn===0?1:0;
   redrawOverlay();
+  speakQuestion(duo()?`${P.name}, à toi ! `:"");
   if(game.chrono) startTimer();
 }
+function speakQuestion(prefix=""){
+  if(!game) return;
+  const q=game.list[game.i];
+  say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="capitale"?`Où se trouve ${q.c.cap} ?`:"À quel pays est ce drapeau ?"));
+}
+$("qname").addEventListener("click",()=>speakQuestion());
 function setGo(txt,disabled,green){const b=$("go");b.textContent=txt;b.disabled=disabled;b.classList.toggle("green",green);}
+function setScore(){
+  $("score").classList.toggle("duo",duo());
+  $("scoreval").innerHTML=duo()
+    ? game.players.map((p,i)=>`<i class="pdot" style="background:${PCOL[i]}"></i><b>${fmt(p.total)}</b>`).join(" ")
+    : `⭐ <b>${fmt(game.players[0].total)}</b>`;
+}
+function toast(txt){ const t=$("toast"); t.textContent=txt; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); }
 
 function startTimer(){
   cancelAnimationFrame(timerRAF);
@@ -281,19 +378,20 @@ function startTimer(){
     $("timer").style.transform=`scaleX(${left/CHRONO_S})`;
     $("clock").textContent="⏱️ "+Math.ceil(left);
     $("clock").classList.toggle("urgent",left<=5);
-    if(left<=0){ validate(true); return; }
+    if(left<=0){ submitTurn(true); return; }
     timerRAF=requestAnimationFrame(tick);
   };
   tick();
 }
 
-$("hintbtn").onclick=()=>{const c=game.list[game.i].c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=game.list[game.i].type==="drapeau"?`drapeau ${de(c)}${c.nom}`:`capitale ${de(c)}${c.nom}`;};
+$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?`drapeau ${de(c)}${c.nom}`:`capitale ${de(c)}${c.nom}`;};
 
 function placeGuess(cx,cy){
   if(!canPlay()) return;
   const ll=screenToLL(cx,cy); if(!ll) return;
   game.guess=ll; game.pinId=(game.pinId||0)+1;
   $("go").disabled=false; $("tip").style.opacity=0;
+  sfx.plop();
   redrawOverlay(); updateHover();
 }
 
@@ -311,60 +409,94 @@ const pointsFor=km=>km<=0?MAXPTS:Math.round(MAXPTS*Math.exp(-km/1200));
 
 $("go").onclick=()=>{
   if(!game) return;
-  if(!game.answered) validate(false);
+  if(!game.answered) submitTurn(false);
   else {game.i++; if(game.i<game.n) nextRound(); else endGame();}
 };
 
-function validate(timeout){
+function submitTurn(timeout){
   if(!game.guess && !timeout) return;
-  cancelAnimationFrame(timerRAF);
+  cancelAnimationFrame(timerRAF); endDrag();
+  const left=game.chrono&&!timeout?Math.max(0,CHRONO_S-(performance.now()-game.t0)/1000):0;
+  game.recs[game.turn]={guess:game.guess,hint:game.hint,left};
+  if(game.turn+1<game.players.length){
+    game.turn++;
+    toast(`Au tour de ${game.players[game.turn].name} ! 🙈`);
+    startTurn();
+  } else reveal();
+}
+
+// points d'une oie posée
+function scoreRec(rec,q,f){
+  const c=q.c, capPt=[c.lon,c.lat];
+  if(!rec.guess) return {km:null,pts:0,bonus:0,gained:0,good:false,hint:rec.hint};
+  // pays absent de la carte (Tuvalu) : on mesure jusqu'à sa capitale
+  const byCap=q.type==="capitale"||!f;
+  let km=byCap?Math.round(d3.geoDistance(rec.guess,capPt)*R):Math.round(distToFeature(f,rec.guess)*R);
+  if(byCap&&km<=50) km=0;
+  let pts=pointsFor(km); if(rec.hint) pts=Math.round(pts/2);
+  const bonus=Math.round(BONUS_MAX*(rec.left/CHRONO_S)*(pts/MAXPTS));
+  // capitale : l'oie dans le bon pays → pas de révision (les points restent selon la distance à la ville)
+  const good=q.type==="capitale"&&!!f&&d3.geoContains(f,rec.guess);
+  return {km,pts,bonus,gained:pts+bonus,good,hint:rec.hint};
+}
+const verdict=r=>r.km===null?"⏰ Temps écoulé !":r.km===0?"🪿 Atterrissage parfait !":r.good&&r.pts<850?"✅ Bon pays !":r.pts>=850?"😮 Presque !":r.pts>=650?"🔥 Super !":r.pts>=400?"👍 Pas mal !":r.pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
+
+function reveal(){
   const q=game.list[game.i], c=q.c, f=byIso.get(c.iso), capPt=[c.lon,c.lat];
-  let km=null, pts=0, bonus=0;
-  if(game.guess){
-    // pays absent de la carte (Tuvalu) : on mesure jusqu'à sa capitale
-    const byCap=q.type==="capitale"||!f;
-    km = byCap ? Math.round(d3.geoDistance(game.guess,capPt)*R) : Math.round(distToFeature(f,game.guess)*R);
-    if(byCap && km<=50) km=0;
-    pts=pointsFor(km); if(game.hint) pts=Math.round(pts/2);
-    if(game.chrono && !timeout){
-      const left=Math.max(0,CHRONO_S-(performance.now()-game.t0)/1000);
-      bonus=Math.round(BONUS_MAX*(left/CHRONO_S)*(pts/MAXPTS));
-    }
+  const res=game.recs.map(r=>scoreRec(r,q,f));
+  res.forEach((r,p)=>{ const P=game.players[p]; P.total+=r.gained; P.log.push({label:q.type!=="capitale"?c.nom:c.cap,fl:flag(c.a2),pts:r.gained}); });
+  Object.assign(game,{answered:true,target:capPt,results:res});
+  $("turn").hidden=true;
+
+  // révisions + passeport : pour le 1er joueur (Nils)
+  const r0=res[0], ok=r0.km!==null&&(r0.km<=OK_KM||r0.good)&&!r0.hint, rk=`${q.type}|${c.iso}`;
+  let revMsg="", stampMsg="";
+  if(ok){
+    if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; }
+    const st=addStamp(c,q.type);
+    if(st){ game.stamps.push(c); stampMsg=st===2?`🛂 Nouveau tampon : ${c.nom} !`:`🛂 Tampon ${MODES.find(m=>m[0]===q.type)[1]} ajouté`; }
   }
-  const gained=pts+bonus;
-  // révisions : raté → à revoir ; réussi → appris
-  // capitale : l'oie dans le bon pays suffit pour ne pas réviser (les points restent selon la distance à la ville)
-  const goodCountry = q.type==="capitale" && game.guess && f && d3.geoContains(f,game.guess);
-  const rk=`${q.type}|${c.iso}`, ok=km!==null&&(km<=OK_KM||goodCountry)&&!game.hint;
-  let revMsg="";
-  if(ok){ if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; } }
   else if(!revisions.has(rk)){ revisions.add(rk); revMsg="📚 Ajouté à tes révisions"; }
   else if(game.learn) revMsg="📚 On le reverra !";
   saveRev();
-  game.total+=gained; game.answered=true; game.target=capPt; game.km=km;
-  game.log.push({label:(q.type!=="capitale"?c.nom:c.cap),fl:flag(c.a2),pts:gained});
-  lands.classed("target",d=>d.id===c.iso); endDrag(); updateHover();
+
+  lands.classed("target",d=>d.id===c.iso); updateHover();
   redrawOverlay();
   [...$("dots").children][game.i].className="done";
-
-  const msg = !game.guess?"⏰ Temps écoulé !":km===0?"🪿 Atterrissage parfait !":goodCountry&&pts<850?"✅ Bon pays !":pts>=850?"😮 Presque !":pts>=650?"🔥 Super !":pts>=400?"👍 Pas mal !":pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
   $("rflag").textContent=flag(c.a2);
-  $("rmsg").textContent=msg;
-  countUp($("rpts"),gained,"+"," pts");
-  $("rbonus").textContent=[bonus?`⚡ dont +${bonus} bonus vitesse`:(game.hint&&game.guess?"💡 indice utilisé : points ÷ 2":""),revMsg].filter(Boolean).join(" · ");
-  const where=`${dans(c)}${c.nom}`;
-  $("rdetail").textContent = !game.guess ? (q.type!=="capitale"?`C'était ici : ${c.nom} (capitale ${c.cap})`:`${c.cap} est la capitale ${de(c)}${c.nom}`)
-    : q.type!=="capitale" ? (km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
-    : km===0 ? `Tu as trouvé ${c.cap}, capitale ${de(c)}${c.nom} !`
-    : goodCountry ? `Ton oie est bien ${dans(c)}${c.nom}, à ${fmt(km)} km de ${c.cap}`
-    : `À ${fmt(km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`;
+  const answer=q.type!=="capitale"?`${c.nom} · capitale : ${c.cap}`:`${c.cap}, capitale ${de(c)}${c.nom}`;
+  if(!duo()){
+    const r=r0, where=`${dans(c)}${c.nom}`;
+    $("rmsg").textContent=verdict(r);
+    countUp($("rpts"),r.gained,"+"," pts");
+    $("rbonus").textContent=[r.bonus?`⚡ dont +${r.bonus} bonus vitesse`:(r.hint&&r.km!==null?"💡 indice utilisé : points ÷ 2":""),stampMsg||revMsg].filter(Boolean).join(" · ");
+    $("rdetail").textContent = r.km===null ? (q.type!=="capitale"?`C'était ici : ${c.nom} (capitale ${c.cap})`:`${c.cap} est la capitale ${de(c)}${c.nom}`)
+      : q.type!=="capitale" ? (r.km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(r.km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
+      : r.km===0 ? `Tu as trouvé ${c.cap}, capitale ${de(c)}${c.nom} !`
+      : r.good ? `Ton oie est bien ${where}, à ${fmt(r.km)} km de ${c.cap}`
+      : `À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`;
+  } else {
+    const [a,b]=res, P=game.players;
+    $("rmsg").textContent=a.gained===b.gained?(a.km===null?"⏰ Personne n'a joué !":"🤝 Égalité !"):`🏆 ${P[a.gained>b.gained?0:1].name} gagne la manche !`;
+    $("rpts").innerHTML=res.map((r,p)=>`<span class="duo"><i class="pdot" style="background:${PCOL[p]}"></i>${P[p].name} <b>+${fmt(r.gained)}</b></span>`).join("");
+    $("rbonus").textContent=[res.map((r,p)=>`${P[p].name} : ${r.km===null?"pas joué":r.km===0?"pile dedans !":r.good?"bon pays":fmt(r.km)+" km"}`).join(" · "),stampMsg].filter(Boolean).join(" · ");
+    $("rdetail").textContent=answer;
+  }
+  $("rfacttxt").textContent=FACTS[c.a2]||"";
+  $("rfact").hidden=!FACTS[c.a2];
   $("result").classList.add("show");
-  countUp($("scoreval"),game.total,"","",game.total-gained);
-  setGo(game.i+1<game.n?"Suivant ➜":"Voir mon score 🏁",false,true);
-  if(km===0) confetti(60);
+  setScore();
+  setGo(game.i+1<game.n?"Suivant ➜":"Voir le score 🏁",false,true);
+  // son + confettis selon la meilleure oie
+  const best=res.reduce((m,r)=>r.gained>m.gained?r:m,res[0]);
+  if(res.some(r=>r.km===0)){ sfx.perfect(); confetti(60); }
+  else if(best.pts>=650||best.good) sfx.good();
+  else if(best.pts>=300) sfx.ok();
+  else sfx.far();
+  if(stampMsg) setTimeout(sfx.stamp,700);
 
-  // cadrage sur la flèche + la cible
-  const pts2=[capPt]; if(game.guess) pts2.push(game.guess);
+  // cadrage sur les oies + la cible
+  const pts2=[capPt,...game.recs.filter(r=>r.guess).map(r=>r.guess)];
   const pb=path.bounds({type:"MultiPoint",coordinates:pts2}), fb=f?path.bounds(f):pb;
   let x0=Math.min(pb[0][0],fb[0][0]),y0=Math.min(pb[0][1],fb[0][1]),x1=Math.max(pb[1][0],fb[1][0]),y1=Math.max(pb[1][1],fb[1][1]);
   if(x1-x0>W*0.7){[[x0,y0],[x1,y1]]=pb;}
@@ -374,6 +506,7 @@ function validate(timeout){
   const t=d3.zoomIdentity.translate(W/2,topH+availH/2).scale(s).translate(-(x0+x1)/2,-(y0+y1)/2);
   svg.transition().duration(900).call(zoom.transform,t);
 }
+$("rfactsay").onclick=()=>say("Le savais-tu ? "+$("rfacttxt").textContent);
 
 function countUp(el,to,pre,suf,from=0){
   const t0=performance.now(),d=700;
@@ -381,13 +514,42 @@ function countUp(el,to,pre,suf,from=0){
   requestAnimationFrame(step);
 }
 
+// ---------- dessin des oies / de la cible ----------
+function drawGoose(ll,p,{hit=false,tag=""}={}){
+  const g=gOver.append("g").attr("class","mk goose").datum(ll);
+  const Pl=PLUME[p]||PLUME[0];
+  // ombre au sol = point exact d'atterrissage ; pendant le glissé l'oie s'envole au-dessus d'elle
+  g.append("ellipse").attr("class","shadow").attr("rx",14).attr("ry",4.5);
+  g.append("path").attr("class","trail").attr("d","M0,-4V-26");
+  const pi=g.append("g").attr("class","fly").append("g").attr("class","pin-inner").attr("data-id",game.pinId);
+  const O="#2b3a55";
+  pi.append("path").attr("d","M-3,-11 L-4,0 M3,-11 L4,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
+  pi.append("path").attr("d","M-8,0 L-1,0 M1,0 L8,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
+  pi.append("path").attr("d","M-14,-20 L-24,-27 L-21,-15 Z").attr("fill",Pl.tail).attr("stroke",O).attr("stroke-width",1.6).attr("stroke-linejoin","round");
+  pi.append("ellipse").attr("cx",-1).attr("cy",-18).attr("rx",15).attr("ry",10).attr("fill",Pl.body).attr("stroke",O).attr("stroke-width",1.8);
+  pi.append("path").attr("d","M10,-22 C11,-30 9,-35 13,-41").attr("fill","none").attr("stroke",O).attr("stroke-width",9.6).attr("stroke-linecap","round");
+  pi.append("path").attr("d","M10,-22 C11,-30 9,-35 13,-41").attr("fill","none").attr("stroke",Pl.body).attr("stroke-width",6).attr("stroke-linecap","round");
+  pi.append("ellipse").attr("cx",-1).attr("cy",-17.5).attr("rx",13.2).attr("ry",8.2).attr("fill",Pl.body);
+  pi.append("path").attr("class","wing").attr("d","M-11,-21 C-6,-27 5,-26 7,-19 C1,-15 -7,-15 -11,-21 Z").attr("fill",Pl.wing).attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
+  pi.append("circle").attr("cx",13.5).attr("cy",-41).attr("r",6.2).attr("fill",Pl.body).attr("stroke",O).attr("stroke-width",1.8);
+  pi.append("path").attr("d","M18.5,-43.5 L27,-40.5 L18.5,-37.5 Z").attr("fill","#ff9a2e").attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
+  pi.append("circle").attr("cx",15).attr("cy",-42.5).attr("r",1.5).attr("fill",O);
+  pi.append("ellipse").attr("cx",12.6).attr("cy",-38.6).attr("rx",1.8).attr("ry",1.1).attr("fill","#ffb3a7").attr("opacity",.8);
+  if(tag){
+    const w=tag.length*7.6+18, T=g.append("g").attr("class","ptag");
+    T.append("rect").attr("x",-w/2).attr("y",-72).attr("width",w).attr("height",20).attr("rx",10).attr("fill",PCOL[p]).attr("stroke","#fff").attr("stroke-width",2);
+    T.append("text").attr("y",-57.5).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",800).attr("font-size",13).attr("font-family","Baloo 2, sans-serif").text(tag);
+  }
+  // zone pour attraper l'oie au doigt (plus grande que le dessin)
+  if(hit) g.append("circle").attr("class","pin-hit").attr("cy",-22).attr("r",34);
+}
+
 function redrawOverlay(){
   gOver.selectAll("*").remove();
   if(!game) return;
-  const sc=1/k;
-  if(game.answered&&game.guess&&game.km>0)
-    gOver.append("path").attr("class","line").attr("d",path({type:"LineString",coordinates:[game.guess,game.target]}));
   if(game.answered){
+    game.recs.forEach((r,p)=>{ const km=game.results[p].km;
+      if(r.guess&&km>0) gOver.append("path").attr("class","line").style("stroke",duo()?PCOL[p]:null).attr("d",path({type:"LineString",coordinates:[r.guess,game.target]})); });
     const q=game.list[game.i];
     const g=gOver.append("g").attr("class","mk").datum(game.target);
     g.append("circle").attr("class","ripple").attr("r",14).attr("fill","none").attr("stroke","#22b07d").attr("stroke-width",3);
@@ -399,52 +561,46 @@ function redrawOverlay(){
     L.append("rect").attr("x",-tw/2).attr("y",-50).attr("width",tw).attr("height",32).attr("rx",16).attr("fill","#22b07d").attr("stroke","#fff").attr("stroke-width",2.5);
     L.append("path").attr("d","M-7,-19 L0,-11 L7,-19 Z").attr("fill","#22b07d");
     L.append("text").attr("y",-28).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",800).attr("font-size",17).attr("font-family","Baloo 2, sans-serif").text(flag(q.c.a2)+" "+label);
-  }
-  if(game.guess){
-    const g=gOver.append("g").attr("class","mk goose").datum(game.guess);
-    // ombre au sol = point exact d'atterrissage ; pendant le glissé l'oie s'envole au-dessus d'elle
-    g.append("ellipse").attr("class","shadow").attr("rx",14).attr("ry",4.5);
-    g.append("path").attr("class","trail").attr("d","M0,-4V-26");
-    const p=g.append("g").attr("class","fly").append("g").attr("class","pin-inner").attr("data-id",game.pinId);
-    const O="#2b3a55";
-    p.append("path").attr("d","M-3,-11 L-4,0 M3,-11 L4,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
-    p.append("path").attr("d","M-8,0 L-1,0 M1,0 L8,0").attr("stroke","#f08a24").attr("stroke-width",2.6).attr("stroke-linecap","round");
-    p.append("path").attr("d","M-14,-20 L-24,-27 L-21,-15 Z").attr("fill","#e9eef5").attr("stroke",O).attr("stroke-width",1.6).attr("stroke-linejoin","round");
-    p.append("ellipse").attr("cx",-1).attr("cy",-18).attr("rx",15).attr("ry",10).attr("fill","#fff").attr("stroke",O).attr("stroke-width",1.8);
-    p.append("path").attr("d","M10,-22 C11,-30 9,-35 13,-41").attr("fill","none").attr("stroke",O).attr("stroke-width",9.6).attr("stroke-linecap","round");
-    p.append("path").attr("d","M10,-22 C11,-30 9,-35 13,-41").attr("fill","none").attr("stroke","#fff").attr("stroke-width",6).attr("stroke-linecap","round");
-    p.append("ellipse").attr("cx",-1).attr("cy",-17.5).attr("rx",13.2).attr("ry",8.2).attr("fill","#fff");
-    p.append("path").attr("class","wing").attr("d","M-11,-21 C-6,-27 5,-26 7,-19 C1,-15 -7,-15 -11,-21 Z").attr("fill","#cfd8e6").attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
-    p.append("circle").attr("cx",13.5).attr("cy",-41).attr("r",6.2).attr("fill","#fff").attr("stroke",O).attr("stroke-width",1.8);
-    p.append("path").attr("d","M18.5,-43.5 L27,-40.5 L18.5,-37.5 Z").attr("fill","#ff9a2e").attr("stroke",O).attr("stroke-width",1.4).attr("stroke-linejoin","round");
-    p.append("circle").attr("cx",15).attr("cy",-42.5).attr("r",1.5).attr("fill",O);
-    p.append("ellipse").attr("cx",12.6).attr("cy",-38.6).attr("rx",1.8).attr("ry",1.1).attr("fill","#ffb3a7").attr("opacity",.8);
-  }
-  // zone pour attraper l'oie au doigt (plus grande que le dessin)
-  if(game.guess&&!game.answered) gOver.select(".mk.goose").append("circle").attr("class","pin-hit").attr("cy",-22).attr("r",34);
-  if(game.answered) gOver.selectAll(".pin-inner").style("animation","none");
+    game.recs.forEach((r,p)=>{ if(r.guess) drawGoose(r.guess,p,{tag:duo()?game.players[p].name:""}); });
+    gOver.selectAll(".pin-inner").style("animation","none");
+  } else if(game.guess) drawGoose(game.guess,game.turn,{hit:true});
   placeMarkers();
 }
 
+// ---------- fin de partie ----------
 function endGame(){
-  const t=game.total, max=game.n*(MAXPTS+(game.chrono?BONUS_MAX:0));
-  $("final").textContent="0"; countUp($("final"),t,"","");
+  const P=game.players, max=game.n*(MAXPTS+(game.chrono?BONUS_MAX:0));
+  $("duel").hidden=!duo(); $("final").hidden=duo(); $("stars").hidden=duo();
   $("outof").textContent=`points sur ${fmt(max)}`;
-  const r=t/max, n=r>=.85?5:r>=.7?4:r>=.5?3:r>=.3?2:r>=.15?1:0;
-  $("stars").innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<n?"on":""}" style="animation-delay:${.3+i*.15}s">★</i>`).join("");
-  $("endtitle").textContent=["On s'entraîne encore ! 💪","Bon début ! 🙂","Pas mal du tout ! 👍","Très fort ! 🔥","Champion ! 🏆","Légende de la géo ! 🌟"][n];
-  if(game.learn){
-    const left=revItems().length;
-    $("newbest").textContent=(game.learned?`✅ ${game.learned} appris · `:"")+(left?`📚 encore ${left} à revoir`:"🎉 Plus rien à revoir !");
+  let n=0;
+  if(duo()){
+    const [a,b]=P;
+    $("endtitle").textContent=a.total===b.total?"🤝 Égalité !":`🏆 ${(a.total>b.total?a:b).name} gagne !`;
+    $("duel").innerHTML=P.map((p,i)=>`<div class="dscore${p.total>=Math.max(a.total,b.total)?" win":""}"><span><i class="pdot" style="background:${PCOL[i]}"></i>${p.name}</span><b>${fmt(p.total)}</b></div>`).join("");
+    $("newbest").textContent="";
+    const mx=Math.max(...a.log.map(l=>l.pts),...b.log.map(l=>l.pts),1);
+    $("recap").innerHTML=a.log.map((l,i)=>`<div><span>${l.fl} ${l.label}</span><span class="r2">${[l.pts,b.log[i].pts].map((v,p)=>`<i class="bar" style="width:${Math.round(40*v/mx)}px;background:${PCOL[p]}"></i><b>${fmt(v)}</b>`).join("")}</span></div>`).join("");
+    n=5;
   } else {
-    const prev=+(store.get(bestKey())||0);
-    if(t>prev){store.set(bestKey(),t);$("newbest").textContent=prev?"🏆 Nouveau record !":"🏆 Premier record !";} else $("newbest").textContent=`Record : ${fmt(prev)}`;
+    const t=P[0].total;
+    $("final").textContent="0"; countUp($("final"),t,"","");
+    const r=t/max; n=r>=.85?5:r>=.7?4:r>=.5?3:r>=.3?2:r>=.15?1:0;
+    $("stars").innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<n?"on":""}" style="animation-delay:${.3+i*.15}s">★</i>`).join("");
+    $("endtitle").textContent=["On s'entraîne encore ! 💪","Bon début ! 🙂","Pas mal du tout ! 👍","Très fort ! 🔥","Champion ! 🏆","Légende de la géo ! 🌟"][n];
+    if(game.learn){
+      const left=revItems().length;
+      $("newbest").textContent=(game.learned?`✅ ${game.learned} appris · `:"")+(left?`📚 encore ${left} à revoir`:"🎉 Plus rien à revoir !");
+    } else {
+      const prev=+(store.get(bestKey())||0);
+      if(t>prev){store.set(bestKey(),t);$("newbest").textContent=prev?"🏆 Nouveau record !":"🏆 Premier record !";} else $("newbest").textContent=`Record : ${fmt(prev)}`;
+    }
+    const mx=Math.max(...P[0].log.map(l=>l.pts),1);
+    $("recap").innerHTML=P[0].log.map(l=>`<div><span>${l.fl} ${l.label}</span><span style="display:flex;align-items:center;gap:8px"><i class="bar" style="width:${Math.round(60*l.pts/mx)}px;background:${l.pts>=650?"var(--good)":l.pts>=300?"var(--gold)":"var(--accent)"}"></i><b>${fmt(l.pts)}</b></span></div>`).join("");
   }
+  $("newstamps").innerHTML=game.stamps.length?`🛂 ${game.stamps.length} nouveau${game.stamps.length>1?"x":""} tampon${game.stamps.length>1?"s":""} : <span>${game.stamps.map(c=>flag(c.a2)).join(" ")}</span>`:"";
   $("againbtn").textContent=game.learn?(revItems().length?"Continuer à réviser 📚":"Menu 🏠"):"Rejouer 🔁";
-  const mx=Math.max(...game.log.map(l=>l.pts),1);
-  $("recap").innerHTML=game.log.map(l=>`<div><span>${l.fl} ${l.label}</span><span style="display:flex;align-items:center;gap:8px"><i class="bar" style="width:${Math.round(60*l.pts/mx)}px;background:${l.pts>=650?"var(--good)":l.pts>=300?"var(--gold)":"var(--accent)"}"></i><b>${fmt(l.pts)}</b></span></div>`).join("");
   $("end").classList.remove("hidden");
-  if(n>=3) setTimeout(()=>confetti(140),400);
+  if(n>=3){ setTimeout(()=>{confetti(140); sfx.fanfare();},400); }
 }
 
 // ---------- confettis ----------
@@ -460,15 +616,28 @@ function confetti(N){
   requestAnimationFrame(f);
 }
 
-function goHome(){cancelAnimationFrame(timerRAF);game=null;endDrag();updateHover();redrawOverlay();lands.classed("target",false);$("result").classList.remove("show");setGo("Valider 🎯",true,false);$("end").classList.add("hidden");$("home").classList.remove("hidden");showBest();}
+function goHome(){
+  cancelAnimationFrame(timerRAF); try{speechSynthesis.cancel();}catch(e){}
+  game=null; endDrag(); updateHover(); redrawOverlay(); lands.classed("target",false);
+  $("result").classList.remove("show"); setGo("Valider 🎯",true,false);
+  $("end").classList.add("hidden"); $("passport").classList.add("hidden"); $("home").classList.remove("hidden");
+  svg.transition().duration(700).call(zoom.transform,homeView());
+  showBest();
+}
 $("startbtn").onclick=()=>startGame(false);
 $("learnbtn").onclick=()=>startGame(true);
 $("againbtn").onclick=()=>startGame(!!game?.learn);
 $("menubtn").onclick=goHome;
 $("homebtn").onclick=goHome;
 showBest();
-let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{layout();svg.call(zoom.transform,game&&!game.answered?homeView():d3.zoomTransform(svg.node()));},150);});
+let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{layout();svg.call(zoom.transform,!game||!game.answered?homeView():d3.zoomTransform(svg.node()));},150);});
 layout();
 svg.call(zoom.transform,homeView());
 // pré-calcule les niveaux de détail pendant l'écran d'accueil (évite un à-coup au premier zoom)
 setTimeout(()=>lodFor(1),300); setTimeout(()=>lodFor(2),900);
+
+// ---------- app installable (service worker, hors ligne) : seulement sur le site, pas dans un iframe ----------
+try{
+  if("serviceWorker" in navigator && location.protocol==="https:" && window.top===window)
+    addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}catch(e){}
