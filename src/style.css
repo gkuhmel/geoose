@@ -146,7 +146,7 @@ button{font-family:inherit;cursor:pointer}
 .name.p1{box-shadow:0 3px 0 #4aa3d6,inset 0 0 0 2px #4aa3d6}
 .name.p2{box-shadow:0 3px 0 #f08a24,inset 0 0 0 2px #f08a24}
 .name input{border:0;outline:0;font:inherit;font-size:17px;font-weight:800;color:var(--ink);width:100%;min-width:0;background:none;-webkit-user-select:text;user-select:text}
-.tools{margin-top:12px}
+
 .btn.small{font-size:17px;padding:8px 10px;flex:1}
 .btn.small small{display:block;font-size:12px;font-weight:700;color:var(--muted)}
 .btn.small.sound{flex:0 0 76px}
@@ -186,9 +186,6 @@ button{font-family:inherit;cursor:pointer}
 #newstamps span{font-size:22px}
 .r2{display:flex;align-items:center;gap:6px}
 .r2 b{min-width:3ch;text-align:right}
-#learnbtn{margin-top:10px;font-size:19px;padding:9px 13px}
-#learnbtn small{display:block;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
-#learnbtn:disabled{opacity:.55;transform:none;box-shadow:0 3px 0 #c9d3e6}
 .stars{font-size:clamp(44px,12vw,60px);letter-spacing:6px;line-height:1;margin:4px 0}
 .stars i{font-style:normal;display:inline-block;color:#d7dde9;text-shadow:0 3px 0 #b9c2d4}
 .stars i.on{color:var(--gold);text-shadow:0 3px 0 var(--gold-d);animation:pop .5s cubic-bezier(.3,1.6,.5,1) both}
@@ -211,3 +208,70 @@ button{font-family:inherit;cursor:pointer}
   .choice .e{font-size:30px}
   .panel{max-width:540px;padding:28px 26px 24px}
 }
+
+/* ---------- accueil compact : tout tient sans défiler (iPhone SE → iPad) ----------
+   Les tailles suivent la hauteur d'écran via --u (1 = iPhone standard). */
+#home{padding-top:calc(var(--sat) + 8px);padding-bottom:calc(var(--sab) + 8px);overflow:hidden;--u:1}
+.homewrap{width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;gap:calc(6px * var(--u));margin:auto}
+#home .brand{display:flex;align-items:center;justify-content:center;gap:8px;line-height:1}
+#home .globe{font-size:calc(34px * var(--u))}
+#home .logo{font-size:calc(42px * var(--u))}
+#home .panel{padding:calc(12px * var(--u)) 12px;border-radius:26px;display:flex;flex-direction:column;gap:calc(9px * var(--u))}
+#home .group{margin:0}
+#home .group h3{font-size:11px;margin:0 0 calc(4px * var(--u)) 4px;letter-spacing:.14em}
+#home .choices{gap:6px}
+#home .choice{font-size:13.5px;padding:calc(6px * var(--u)) 2px calc(5px * var(--u));border-radius:14px;line-height:1.15;box-shadow:0 3px 0 #dde3ef}
+#home .choice.on{box-shadow:0 3px 0 var(--accent),inset 0 0 0 2.5px var(--accent)}
+#home .choice .e{font-size:calc(19px * var(--u));line-height:1.15}
+/* puces « en ligne » : emoji à gauche du texte */
+#home .choices.inline .choice{display:flex;align-items:center;justify-content:center;gap:4px;padding:calc(7px * var(--u)) 2px}
+#home .choices.inline .choice .e{font-size:calc(17px * var(--u));display:inline}
+#home .choices.wrap{gap:5px 6px}
+#home .choices.wrap .choice{flex:1 1 30%}
+#home .row2{gap:8px}
+#home #names{margin:0;gap:8px}
+#home .name{padding:calc(4px * var(--u)) 10px}
+#home .name input{font-size:16px}
+#home #startbtn{font-size:21px;padding:calc(10px * var(--u)) 10px calc(8px * var(--u));line-height:1.1;max-width:none;border-radius:18px}
+#home #startbtn small{display:block;font-size:13px;font-weight:700;opacity:.92;min-height:0}
+#home #startbtn small:empty{display:none}
+#home .tools{display:flex;gap:6px}
+.tool{flex:1;min-width:0;justify-content:center;border:0;background:rgba(255,255,255,.92);border-radius:14px;padding:calc(5px * var(--u)) 4px;font-family:inherit;font-weight:800;font-size:13.5px;line-height:1.1;color:var(--ink);box-shadow:0 3px 0 #c9d3e6;display:flex;flex-direction:column;align-items:center}
+.tool .e{font-size:calc(18px * var(--u))}
+.tool small{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.tool.sq{flex:0 0 54px;font-size:calc(22px * var(--u))}
+.tool.sq small{font-size:10.5px}
+.tool:active{transform:translateY(2px);box-shadow:0 1px 0 #c9d3e6}
+.tool:disabled{opacity:.55}
+.tool.off{opacity:.6}
+/* écrans courts (iPhone SE, Safari avec barres) */
+@media (max-height:600px){ #home{--u:.82} #home .brand{display:none} #home .group h3{font-size:10px} }
+@media (max-height:500px){ #home{--u:.7} }
+/* tablettes : plus grand si la hauteur le permet */
+@media (min-width:700px) and (min-height:680px){
+  #home{--u:1.12}
+  .homewrap{max-width:560px}
+  #home .choice{font-size:16px}
+  #home .tool{font-size:15px}
+}
+@media (min-width:700px) and (min-height:900px){ #home{--u:1.3} .homewrap{max-width:600px} #home .choice{font-size:17px} }
+
+/* ---------- carte du passeport ---------- */
+.plegend{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+#pmapbtn{border:0;background:#fff;border-radius:999px;padding:4px 12px;font-family:inherit;font-weight:800;font-size:14px;color:var(--ink);box-shadow:0 3px 0 #dde3ef}
+body.pmap #hud,body.pmap #bottom,body.pmap #tip{display:none}
+body.pmap .land{fill:#eef1f5}
+#pmapbar{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--sat) + 10px);z-index:5;width:calc(100% - 20px);max-width:620px;border-radius:20px;padding:8px 8px 8px 14px}
+.pmtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#pmapbar b{display:block;font-size:18px;font-weight:800;line-height:1.15}
+#pmapbar small{display:block;font-size:13px;font-weight:600;color:var(--muted)}
+#pmapbar .btn{width:auto;max-width:none;flex:0 0 auto;font-size:16px;padding:8px 12px;border-radius:14px}
+#pmaplegend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12.5px;font-weight:700;margin-top:4px;color:var(--ink)}
+#pmaplegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+@media (max-width:500px){#pmapbar small{display:none} #pmapbar b{font-size:16px}}
+#pmapcard{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);z-index:5;width:calc(100% - 24px);max-width:440px;border-radius:22px;padding:8px 14px 8px 8px;display:flex;align-items:center;gap:10px;animation:qin .35s cubic-bezier(.3,1.5,.5,1)}
+#pmapcard .stampsvg{width:84px;flex:0 0 84px}
+#pmapcard b{display:block;font-size:20px;font-weight:800}
+#pmapcard span{display:block;font-size:14px;font-weight:600;color:var(--muted)}
+@media (max-width:699px) and (min-height:720px){ #home{--u:1.12} #home .choice{font-size:14.5px} }
+@media (max-width:699px) and (min-height:820px){ #home{--u:1.24} }

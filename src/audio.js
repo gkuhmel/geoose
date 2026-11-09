@@ -5,6 +5,15 @@ let on = (() => { try { return localStorage.getItem(KEY) !== "0"; } catch (e) { 
 let ctx = null;
 
 export const soundOn = () => on;
+// lecture automatique des questions (désactivée par défaut) ; les boutons 🔊 explicites lisent quand même
+const VKEY = "geoose-voix";
+let voix = (() => { try { return localStorage.getItem(VKEY) === "1"; } catch (e) { return false; } })();
+export const voiceOn = () => voix;
+export function setVoice(v) {
+  voix = v;
+  try { localStorage.setItem(VKEY, v ? "1" : "0"); } catch (e) {}
+  if (!v) { try { speechSynthesis.cancel(); } catch (e) {} }
+}
 export function setSound(v) {
   on = v;
   try { localStorage.setItem(KEY, v ? "1" : "0"); } catch (e) {}

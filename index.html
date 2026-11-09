@@ -59,9 +59,8 @@
 </div>
 
 <div class="screen" id="home">
-  <div class="globe">🪿</div>
-  <div class="logo">Ge<span>oo</span>se</div>
-  <div class="sub">Fais atterrir l'oie au bon endroit !</div>
+  <div class="homewrap">
+  <div class="brand"><span class="globe">🪿</span><span class="logo">Ge<span>oo</span>se</span></div>
   <div class="panel glass">
     <div class="group"><h3>Je cherche</h3>
       <div class="choices" data-k="mode">
@@ -71,22 +70,22 @@
         <button class="choice" data-v="mix"><span class="e">🎲</span>Mélange</button>
       </div></div>
     <div class="group"><h3>Où ?</h3>
-      <div class="choices wrap" data-k="cont" id="conts"></div></div>
+      <div class="choices wrap inline" data-k="cont" id="conts"></div></div>
     <div class="group"><h3>Niveau</h3>
       <div class="choices" data-k="level">
-        <button class="choice on" data-v="1"><span class="e">🐣</span>Facile<small>les célèbres</small></button>
-        <button class="choice" data-v="2"><span class="e">🦊</span>Moyen<small>assez connus</small></button>
-        <button class="choice" data-v="3"><span class="e">🦅</span>Difficile<small>moins connus</small></button>
-        <button class="choice" data-v="4"><span class="e">🐉</span>Expert<small>les raretés</small></button>
+        <button class="choice on" data-v="1" title="les célèbres"><span class="e">🐣</span>Facile</button>
+        <button class="choice" data-v="2" title="assez connus"><span class="e">🦊</span>Moyen</button>
+        <button class="choice" data-v="3" title="moins connus"><span class="e">🦅</span>Difficile</button>
+        <button class="choice" data-v="4" title="les raretés"><span class="e">🐉</span>Expert</button>
       </div></div>
     <div class="row2">
       <div class="group"><h3>Partie</h3>
-        <div class="choices" data-k="chrono">
-          <button class="choice on" data-v="0"><span class="e">🧭</span>Tranquille</button>
-          <button class="choice" data-v="1"><span class="e">⏱️</span>Chrono<small>15 s</small></button>
+        <div class="choices inline" data-k="chrono">
+          <button class="choice on" data-v="0"><span class="e">🧭</span>Calme</button>
+          <button class="choice" data-v="1"><span class="e">⏱️</span>Chrono</button>
         </div></div>
       <div class="group"><h3>Joueurs</h3>
-        <div class="choices" data-k="players">
+        <div class="choices inline" data-k="players">
           <button class="choice on" data-v="1"><span class="e">🙂</span>Solo</button>
           <button class="choice" data-v="2"><span class="e">👥</span>À deux</button>
         </div></div>
@@ -95,14 +94,14 @@
       <label class="name p1"><span>🪿</span><input id="name1" maxlength="12" autocomplete="off" spellcheck="false"></label>
       <label class="name p2"><span>🪿</span><input id="name2" maxlength="12" autocomplete="off" spellcheck="false"></label>
     </div>
-    <button class="btn" id="startbtn" style="margin-top:6px">C'est parti ! 🚀</button>
-    <div id="best"></div>
-    <button class="btn ghost" id="learnbtn">📚 Apprentissage<small id="learnn"></small></button>
-    <div class="row2 tools">
-      <button class="btn ghost small" id="passbtn">🛂 Passeport<small id="passn"></small></button>
-      <button class="btn ghost small sound" id="soundhome">🔊<small>Son</small></button>
+    <button class="btn" id="startbtn">C'est parti ! 🚀<small id="best"></small></button>
+    <div class="tools">
+      <button class="tool" id="learnbtn"><span class="e">📚</span>Révisions<small id="learnn"></small></button>
+      <button class="tool" id="passbtn"><span class="e">🛂</span>Passeport<small id="passn"></small></button>
+      <button class="tool sq sound" id="soundhome" aria-label="Sons">🔊<small>Sons</small></button>
+      <button class="tool sq voice" id="voicehome" aria-label="Lecture des questions">🗣️<small>Voix</small></button>
     </div>
-    <div style="margin-top:8px;font-size:14px;font-weight:600;color:var(--muted)">Bon voyage, Nils ! 🌍</div>
+  </div>
   </div>
 </div>
 
@@ -113,7 +112,7 @@
       <button class="glass round" id="passclose" aria-label="Fermer">✕</button>
     </div>
     <div class="ptabs" id="ptabs"></div>
-    <div class="plegend">★ une étoile par mode réussi : pays, capitale, drapeau</div>
+    <div class="plegend"><span>★ une étoile par mode réussi</span><button id="pmapbtn">🗺️ Voir sur la carte</button></div>
     <div id="pgrid"></div>
   </div>
 </div>
@@ -134,6 +133,14 @@
     </div>
   </div>
 </div>
+<div id="pmapbar" class="glass" hidden>
+  <div class="pmtop">
+    <div><b id="pmapn"></b><small>Touche un pays pour voir son tampon</small></div>
+    <button class="btn small" id="pmapback">📖 Passeport</button>
+  </div>
+  <div id="pmaplegend"></div>
+</div>
+<div id="pmapcard" class="glass" hidden></div>
 <canvas id="confetti"></canvas>
 
 <script type="module" src="/src/main.js"></script>

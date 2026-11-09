@@ -27,8 +27,8 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 - **Gestes** : glisser à un doigt = déplacer la carte, pincer = zoomer, **toucher = poser l'oie**, **faire glisser l'oie** = viser finement (elle s'envole au-dessus du doigt, son ombre marque l'endroit où elle va atterrir). En modes Pays / Drapeaux, le pays visé s'allume.
 - **Où ?** : Monde ou un continent (Europe, Afrique, Asie, Amériques, Océanie) ; la carte démarre dessus.
 - **À deux** : même question pour les deux joueurs (prénoms modifiables), chacun pose son oie à son tour, puis on compare ; oie blanche contre oie cendrée.
-- **🛂 Passeport** : un tampon par pays et par mode réussi, progression par continent.
-- **🔊 Voix et sons** : la question est lue à voix haute (toucher le nom pour la réécouter), cri d'oie à l'atterrissage parfait ; un bouton coupe tout le son.
+- **🛂 Passeport** : un tampon par pays et par mode réussi, progression par continent, et une carte du monde des pays visités.
+- **🔊 Sons et 🗣️ voix** : cri d'oie à l'atterrissage parfait, ding, tampon… ; lecture des questions à voix haute en option (bouton Voix sur l'accueil, désactivée par défaut).
 - **💡 Le savais-tu ?** : une info amusante sur le pays après chaque réponse.
 - **App** : sur iPhone / iPad, Safari → Partager → « Sur l'écran d'accueil » : plein écran, icône oie, marche hors ligne.
 - Records stockés en `localStorage` par mode / niveau / chrono ; révisions dans `geoose-revisions`.

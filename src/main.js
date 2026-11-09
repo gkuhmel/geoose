@@ -4,7 +4,7 @@ import { presimplify, simplify } from "topojson-simplify";
 import WORLD from "world-atlas/countries-50m.json";
 import { COUNTRIES, CONTINENTS } from "./countries.js";
 import { FACTS } from "./facts.js";
-import { sfx, say, unlock, soundOn, setSound } from "./audio.js";
+import { sfx, say, unlock, soundOn, setSound, voiceOn, setVoice } from "./audio.js";
 import "./style.css";
 const C = COUNTRIES;
 
@@ -170,6 +170,7 @@ svg.on("pointerup pointercancel",e=>{
   if(!p||wasMulti||e.type==="pointercancel") return;
   if(Math.hypot(e.clientX-p.x,e.clientY-p.y)>12||performance.now()-p.t>500) return; // c'était un glissement
   if(e.target.closest(".pin-hit")) return; // simple tap sur l'oie : rien
+  if(pmap){ passMapTap(e.clientX,e.clientY); return; }
   placeGuess(e.clientX,e.clientY);
 });
 function endDrag(){ if(!drag) return; drag=null; svg.classed("dragging",false); }
@@ -300,7 +301,7 @@ function renderPassport(){
 $("ptabs").addEventListener("click",e=>{const b=e.target.closest(".ptab"); if(b){passTab=b.dataset.k; renderPassport();}});
 $("pgrid").addEventListener("click",e=>{
   const b=e.target.closest(".stamp"); if(!b) return; const c=byKey.get(b.dataset.iso), got=passport[c.iso]||[];
-  say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`+(got.length?` ${got.length} étoile${got.length>1?"s":""} sur 3.`:""));
+  if(voiceOn()) say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`+(got.length?` ${got.length} étoile${got.length>1?"s":""} sur 3.`:""));
 });
 $("passbtn").onclick=()=>{unlock(); renderPassport(); $("passport").classList.remove("hidden");};
 $("passclose").onclick=()=>{$("passport").classList.add("hidden"); showBest();};
@@ -310,6 +311,45 @@ function showSound(){ document.querySelectorAll(".sound").forEach(b=>{ b.firstCh
 document.querySelectorAll(".sound").forEach(b=>b.addEventListener("click",()=>{ setSound(!soundOn()); unlock(); showSound(); if(soundOn()) sfx.plop(); }));
 document.addEventListener("pointerdown",unlock,{once:true,capture:true});
 showSound();
+// voix : lecture des noms (questions, passeport) ; désactivée par défaut
+function showVoice(){ document.querySelectorAll(".voice").forEach(b=>{ b.firstChild.textContent=voiceOn()?"🗣️":"🤐"; b.classList.toggle("off",!voiceOn()); }); }
+document.querySelectorAll(".voice").forEach(b=>b.addEventListener("click",()=>{ setVoice(!voiceOn()); unlock(); showVoice(); if(voiceOn()) say("Je lirai les questions."); }));
+showVoice();
+
+// ---------- carte du passeport : pays tamponnés coloriés à l'encre du continent ----------
+const PASTEL={europe:"#9ebbe8",afrique:"#f2ae95",asie:"#eba0b0",ameriques:"#92d3b0",oceanie:"#c7aae8"};
+let pmap=false;
+function openPassMap(){
+  pmap=true;
+  $("passport").classList.add("hidden"); $("home").classList.add("hidden");
+  document.body.classList.add("pmap");
+  const vis=new Set(C.filter(stamped).map(c=>c.iso));
+  lands.style("fill",d=>vis.has(d.id)?PASTEL[byKey.get(d.id).cont]:null);
+  $("pmapn").textContent=`🛂 ${vis.size} pays visité${vis.size>1?"s":""} sur ${C.length}`;
+  $("pmaplegend").innerHTML=Object.entries(CONTINENTS).filter(([k])=>k!=="monde").map(([k,v])=>{
+    const all=C.filter(c=>c.cont===k); return `<span><i style="background:${PASTEL[k]}"></i>${v.nom} ${all.filter(stamped).length}/${all.length}</span>`;}).join("");
+  $("pmapbar").hidden=false; $("pmapcard").hidden=true;
+  // monde entier, centré verticalement sous la barre
+  const top=$("pmapbar").getBoundingClientRect().bottom;
+  svg.transition().duration(800).call(zoom.transform,d3.zoomIdentity.translate(0,Math.max(top+8,(H-MH)/2)));
+}
+function closePassMap(){
+  pmap=false; document.body.classList.remove("pmap");
+  lands.style("fill",null);
+  $("pmapbar").hidden=true; $("pmapcard").hidden=true;
+  renderPassport(); $("home").classList.remove("hidden"); $("passport").classList.remove("hidden");
+  svg.transition().duration(700).call(zoom.transform,homeView());
+}
+function passMapTap(cx,cy){
+  const ll=screenToLL(cx,cy), c=ll&&byKey.get(countryAt(ll));
+  if(!c){ $("pmapcard").hidden=true; return; }
+  const got=passport[c.iso]||[];
+  $("pmapcard").innerHTML=`${stampSVG(c)}<div><b>${flag(c.a2)} ${c.nom}</b><span>Capitale : ${c.cap}</span><span>${got.length?`${"★".repeat(got.length)}${"☆".repeat(3-got.length)} · ${got.map(t=>({pays:"pays",capitale:"capitale",drapeau:"drapeau"})[t]).join(", ")}`:"Pas encore visité : à toi de jouer !"}</span></div>`;
+  $("pmapcard").hidden=false;
+  if(voiceOn()) say(nomAvecArticle(c));
+}
+$("pmapbtn").onclick=openPassMap;
+$("pmapback").onclick=closePassMap;
 
 // ---------- accueil ----------
 const bestKey=()=>`geoose4-${opts.mode}-${opts.level}-${opts.chrono}-${opts.cont}`;
@@ -319,7 +359,7 @@ function showBest(){
   $("names").hidden=solo;
   const n=revItems().length;
   $("learnbtn").disabled=n===0;
-  $("learnn").textContent=n?`${n} question${n>1?"s":""} à revoir`:"aucune erreur à revoir 🎉";
+  $("learnn").textContent=n?`${n} à revoir`:"rien à revoir 🎉";
   $("passn").textContent=`${C.filter(stamped).length} / ${C.length}`;
 }
 
@@ -380,7 +420,7 @@ function startTurn(){
   svg.transition().duration(700).call(zoom.transform,homeView());
   $("tip").style.opacity=game.i<3&&game.turn===0?1:0;
   redrawOverlay();
-  speakQuestion(duo()?`${P.name}, à toi ! `:"");
+  if(voiceOn()) speakQuestion(duo()?`${P.name}, à toi ! `:"");
   if(game.chrono) startTimer();
 }
 function speakQuestion(prefix=""){
@@ -388,7 +428,7 @@ function speakQuestion(prefix=""){
   const q=game.list[game.i];
   say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="capitale"?`Où se trouve ${q.c.cap} ?`:"À quel pays est ce drapeau ?"));
 }
-$("qname").addEventListener("click",()=>speakQuestion());
+$("qname").addEventListener("click",()=>{ if(voiceOn()) speakQuestion(); });
 function setGo(txt,disabled,green){const b=$("go");b.textContent=txt;b.disabled=disabled;b.classList.toggle("green",green);}
 function setScore(){
   $("score").classList.toggle("duo",duo());
