@@ -37,7 +37,7 @@ button{font-family:inherit;cursor:pointer}
 @keyframes drop{from{transform:translateY(-40px);opacity:0}to{transform:none;opacity:1}}
 .ripple{transform-box:fill-box;transform-origin:center;animation:ripple 1.6s ease-out infinite}
 @keyframes ripple{from{transform:scale(.4);opacity:.9}to{transform:scale(2.6);opacity:0}}
-.tlabel{animation:pop .5s .25s cubic-bezier(.3,1.6,.5,1) both;transform-box:fill-box;transform-origin:center bottom}
+.tlabel{animation:pop .5s .25s cubic-bezier(.3,1.6,.5,1) both;transform-box:fill-box;transform-origin:center top}
 @keyframes pop{from{transform:scale(0)}to{transform:none}}
 
 /* ---------- HUD ---------- */
@@ -173,7 +173,7 @@ button{font-family:inherit;cursor:pointer}
 .stampsvg.off .fl{filter:grayscale(1);opacity:.28}
 /* tampon qui s'abat sur la carte de résultat */
 #result{position:relative}
-#rstamp{position:absolute;right:-6px;top:-34px;width:84px;pointer-events:none}
+#rstamp{position:absolute;right:-4px;top:-78px;width:84px;pointer-events:none}
 #rstamp:not(:empty){animation:slam .5s .55s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes slam{from{transform:scale(2.6) rotate(-20deg);opacity:0}60%{opacity:1}to{transform:none;opacity:1}}
 /* fin à deux */
@@ -275,3 +275,8 @@ body.pmap .land{fill:#eef1f5}
 #pmapcard span{display:block;font-size:14px;font-weight:600;color:var(--muted)}
 @media (max-width:699px) and (min-height:720px){ #home{--u:1.12} #home .choice{font-size:14.5px} }
 @media (max-width:699px) and (min-height:820px){ #home{--u:1.24} }
+
+/* 5 modes sur une ligne */
+#home [data-k=mode]{gap:5px}
+#home [data-k=mode] .choice{font-size:12.5px;padding-left:1px;padding-right:1px}
+@media (min-width:700px){ #home [data-k=mode] .choice{font-size:15px} }

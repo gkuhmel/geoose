@@ -4,6 +4,7 @@ import { presimplify, simplify } from "topojson-simplify";
 import WORLD from "world-atlas/countries-50m.json";
 import { COUNTRIES, CONTINENTS } from "./countries.js";
 import { FACTS } from "./facts.js";
+import { CITIES } from "./cities.js";
 import { sfx, say, unlock, soundOn, setSound, voiceOn, setVoice } from "./audio.js";
 import "./style.css";
 const C = COUNTRIES;
@@ -26,6 +27,8 @@ geoms.geometries = geoms.geometries.filter(g=>g.id!=="010"); // sans Antarctique
 // territoires sans id dans world-atlas : rattachés au pays reconnu par l'ONU (ou id maison pour le Kosovo)
 const NOID={"Kosovo":"XK","N. Cyprus":"196","Somaliland":"706"};
 geoms.geometries.forEach(g=>{ if(g.id===undefined && NOID[g.properties?.name]) g.id=NOID[g.properties.name]; });
+// Hong Kong et Macao : rattachés à la Chine (pour le mode Villes)
+geoms.geometries.forEach(g=>{ if(g.id==="344"||g.id==="446") g.id="156"; });
 const features = topojson.feature(WORLD,geoms).features;
 // plusieurs morceaux pour un même id (ex. Australie + îles Ashmore) : on les fusionne pour le calcul
 const byIso = new Map();
@@ -124,7 +127,19 @@ function onZoom(t){
 }
 function placeMarkers(){ gOver.selectAll(".mk").attr("transform",d=>{const [x,y]=projection(d);return `translate(${x},${y}) scale(${1/k})`;}); }
 // pas de pan quand le doigt attrape l'oie (c'est elle qu'on déplace)
-const zoom=d3.zoom().filter(e=>!e.target.closest?.(".pin-hit")&&(!e.ctrlKey||e.type==="wheel")&&!e.button).on("zoom",e=>onZoom(e.transform)).on("end",()=>setLod(lodOfK(k)));
+// « mou » au bord : la carte peut glisser jusqu'à ce que son bord atteigne ~le milieu de l'écran,
+// pour pouvoir centrer un pays en bout de carte (Nouvelle-Zélande, Alaska, Chili…).
+const EDGE=.45;
+function constrainView(t,ext){
+  const [[x0,y0],[x1,y1]]=ext, w=x1-x0, h=y1-y0, mw=W*t.k, mh=MH*t.k;
+  const fit=(pos,size,lo,len,m)=>{
+    if(size<=len-2*m) return Math.min(Math.max(pos,lo+m),lo+len-m-size); // carte plus petite : elle reste entre les marges
+    return Math.min(Math.max(pos,lo+len-m-size),lo+m);
+  };
+  const tx=fit(t.x,mw,x0,w,w*EDGE), ty=fit(t.y,mh,y0,h,mh<h?0:h*EDGE);
+  return tx===t.x&&ty===t.y?t:d3.zoomIdentity.translate(tx,ty).scale(t.k);
+}
+const zoom=d3.zoom().constrain(constrainView).filter(e=>!e.target.closest?.(".pin-hit")&&(!e.ctrlKey||e.type==="wheel")&&!e.button).on("zoom",e=>onZoom(e.transform)).on("end",()=>setLod(lodOfK(k)));
 svg.call(zoom).on("dblclick.zoom",null);
 function viewOn(lon,lat,spanLon){
   const s=Math.max(1,360/spanLon); const [x,y]=projection([lon,lat]);
@@ -196,7 +211,7 @@ function countryAt(ll){
 let hoverId=null;
 function updateHover(){
   const q=game&&game.list[game.i];
-  const id=q&&!game.answered&&game.guess&&q.type!=="capitale"?countryAt(game.guess):null;
+  const id=q&&!game.answered&&game.guess&&(q.type==="pays"||q.type==="drapeau")?countryAt(game.guess):null;
   if(id!==hoverId){hoverId=id;drawHover();}
 }
 function drawHover(){
@@ -235,6 +250,12 @@ try{ const n=JSON.parse(store.get(NAMES_KEY)||"null")||["Nils","Papa"]; $("name1
 
 // difficulté = renommée du pays / de la capitale / du drapeau (1 célèbre … 4 rareté)
 const tierOf=(c,type)=>c.tier[type];
+const TYPES=["pays","capitale","drapeau","ville"];
+const cityById=new Map(CITIES.map(v=>[v.id,v]));
+// nom à trouver / point cible d'une question
+const placeName=q=>q.type==="ville"?q.city.nom:q.type==="capitale"?q.c.cap:q.c.nom;
+const targetOf=q=>q.city?[q.city.lon,q.city.lat]:[q.c.lon,q.c.lat];
+const revKey=q=>q.type==="ville"?`ville|${q.city.id}`:`${q.type}|${q.c.iso}`;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const byKey=new Map(C.map(c=>[c.iso,c]));
 const nomAvecArticle=c=>c.art==="l'"?"l'"+c.nom:c.art?c.art+" "+c.nom:c.nom;
@@ -246,10 +267,14 @@ const OK_KM=150, REV_KEY="geoose-revisions";
 const loadSet=k=>{try{const a=JSON.parse(store.get(k)||"[]");return new Set(Array.isArray(a)?a:[]);}catch(e){return new Set();}};
 let revisions=loadSet(REV_KEY);
 const saveRev=()=>store.set(REV_KEY,JSON.stringify([...revisions]));
-const revItems=()=>[...revisions].map(k=>{const [type,iso]=k.split("|");return {c:byKey.get(iso),type};}).filter(q=>q.c&&["pays","capitale","drapeau"].includes(q.type));
+const revItems=()=>[...revisions].map(k=>{
+  const i=k.indexOf("|"), type=k.slice(0,i), rest=k.slice(i+1);
+  if(type==="ville"){ const city=cityById.get(rest); return {c:city&&byKey.get(city.iso),type,city}; }
+  return {c:byKey.get(rest),type};
+}).filter(q=>q.c&&TYPES.includes(q.type));
 
 // ---------- passeport : un tampon par pays et par mode réussi ----------
-const PASS_KEY="geoose-passeport", MODES=[["pays","🗺️"],["capitale","🏛️"],["drapeau","🚩"]];
+const PASS_KEY="geoose-passeport", MODES=[["pays","🗺️"],["capitale","🏛️"],["drapeau","🚩"],["ville","🏙️"]];
 let passport={}; try{ passport=JSON.parse(store.get(PASS_KEY)||"{}")||{}; }catch(e){}
 let passDates={}; try{ passDates=JSON.parse(store.get(PASS_KEY+"-dates")||"{}")||{}; }catch(e){}
 const stamped=c=>(passport[c.iso]||[]).length>0;
@@ -279,10 +304,10 @@ function stampSVG(c,{got=passport[c.iso]||[],date=passDates[c.iso]}={}){
   }
   const ink=INK[c.cont]||"#2f62b0", rot=(hashIso(c.iso)%29)-14, n=got.length;
   const d=date?date.split("-"):null, dateTxt=d?`${d[2]} ${MOIS[+d[1]-1]} ${d[0]}`:"";
-  const stars=[0,1,2].map(i=>`<text x="${48+i*12}" y="88" text-anchor="middle" font-size="10" fill="${i<n?ink:"none"}" stroke="${ink}" stroke-width=".8">★</text>`).join("");
+  const stars=[0,1,2,3].map(i=>`<text x="${42+i*12}" y="88" text-anchor="middle" font-size="10" fill="${i<n?ink:"none"}" stroke="${ink}" stroke-width=".8">★</text>`).join("");
   return `<svg viewBox="0 0 120 120" class="stampsvg" style="transform:rotate(${rot}deg)">
 <defs><path id="${id}" d="M${P(a0)} A${r},${r} 0 1,1 ${P(a1)}"/><path id="${id}b" d="M${P(-150*Math.PI/180)} A${r},${r} 0 0,0 ${P(-30*Math.PI/180)}"/></defs>
-<g fill="none" stroke="${ink}"><circle cx="60" cy="60" r="56" stroke-width="3.2"/><circle cx="60" cy="60" r="38" stroke-width="1.4"/>${n===3?`<circle cx="60" cy="60" r="52.5" stroke-width="1" stroke-dasharray="2 2.4"/>`:""}</g>
+<g fill="none" stroke="${ink}"><circle cx="60" cy="60" r="56" stroke-width="3.2"/><circle cx="60" cy="60" r="38" stroke-width="1.4"/>${n===4?`<circle cx="60" cy="60" r="52.5" stroke-width="1" stroke-dasharray="2 2.4"/>`:""}</g>
 <text font-size="${fs.toFixed(1)}" font-weight="800" fill="${ink}" letter-spacing=".6"><textPath href="#${id}" startOffset="50%" text-anchor="middle">${name}</textPath></text>
 ${dateTxt?`<text font-size="7" font-weight="700" fill="${ink}" letter-spacing=".8"><textPath href="#${id}b" startOffset="50%" text-anchor="middle">${dateTxt}</textPath></text>`:""}
 <text x="60" y="68" text-anchor="middle" font-size="30" class="fl">${flag(c.a2)}</text>${stars}</svg>`;
@@ -301,7 +326,7 @@ function renderPassport(){
 $("ptabs").addEventListener("click",e=>{const b=e.target.closest(".ptab"); if(b){passTab=b.dataset.k; renderPassport();}});
 $("pgrid").addEventListener("click",e=>{
   const b=e.target.closest(".stamp"); if(!b) return; const c=byKey.get(b.dataset.iso), got=passport[c.iso]||[];
-  if(voiceOn()) say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`+(got.length?` ${got.length} étoile${got.length>1?"s":""} sur 3.`:""));
+  if(voiceOn()) say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`+(got.length?` ${got.length} étoile${got.length>1?"s":""} sur 4.`:""));
 });
 $("passbtn").onclick=()=>{unlock(); renderPassport(); $("passport").classList.remove("hidden");};
 $("passclose").onclick=()=>{$("passport").classList.add("hidden"); showBest();};
@@ -344,7 +369,7 @@ function passMapTap(cx,cy){
   const ll=screenToLL(cx,cy), c=ll&&byKey.get(countryAt(ll));
   if(!c){ $("pmapcard").hidden=true; return; }
   const got=passport[c.iso]||[];
-  $("pmapcard").innerHTML=`${stampSVG(c)}<div><b>${flag(c.a2)} ${c.nom}</b><span>Capitale : ${c.cap}</span><span>${got.length?`${"★".repeat(got.length)}${"☆".repeat(3-got.length)} · ${got.map(t=>({pays:"pays",capitale:"capitale",drapeau:"drapeau"})[t]).join(", ")}`:"Pas encore visité : à toi de jouer !"}</span></div>`;
+  $("pmapcard").innerHTML=`${stampSVG(c)}<div><b>${flag(c.a2)} ${c.nom}</b><span>Capitale : ${c.cap}</span><span>${got.length?`${"★".repeat(got.length)}${"☆".repeat(4-got.length)} · ${got.map(t=>({pays:"pays",capitale:"capitale",drapeau:"drapeau",ville:"ville"})[t]).join(", ")}`:"Pas encore visité : à toi de jouer !"}</span></div>`;
   $("pmapcard").hidden=false;
   if(voiceOn()) say(nomAvecArticle(c));
 }
@@ -366,13 +391,16 @@ function showBest(){
 // Tire ROUNDS questions du continent choisi dont la renommée correspond exactement au niveau
 // (si le niveau n'en a pas assez, on complète avec les niveaux voisins).
 function pickQuestions(mode,level,cont){
-  const types=mode==="mix"?["pays","capitale","drapeau"]:[mode];
+  const types=mode==="mix"?TYPES:[mode];
   const pool=C.filter(c=>cont==="monde"||c.cont===cont);
   const out=[], used=new Set();
   for(const d of [0,1,-1,2,-2,3,-3]){
     const lv=level+d; if(lv<1||lv>4) continue;
-    const cands=shuffle(pool.flatMap(c=>types.filter(t=>tierOf(c,t)===lv).map(t=>({c,type:t}))));
-    for(const q of cands){ if(out.length>=ROUNDS) break; if(!used.has(q.c.iso)){used.add(q.c.iso);out.push(q);} }
+    const cands=shuffle(pool.flatMap(c=>types.flatMap(t=>t==="ville"
+      ? CITIES.filter(v=>v.iso===c.iso&&v.tier===lv).map(city=>({c,type:t,city}))
+      : tierOf(c,t)===lv?[{c,type:t}]:[])));
+    // une ville peut partager le pays d'une autre question, mais pas deux fois la même
+    for(const q of cands){ if(out.length>=ROUNDS) break; const key=q.city?q.city.id:q.c.iso; if(!used.has(key)){used.add(key);out.push(q);} }
     if(out.length>=ROUNDS) break;
   }
   return shuffle(out);
@@ -408,8 +436,8 @@ function startTurn(){
   const P=game.players[game.turn];
   $("turn").hidden=!duo();
   if(duo()) $("turn").innerHTML=`<i style="background:${PCOL[game.turn]}"></i>${P.name}, à toi !`;
-  $("qlabel").textContent={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?"}[q.type];
-  $("qname").textContent={pays:q.c.nom,capitale:q.c.cap,drapeau:flag(q.c.a2)}[q.type];
+  $("qlabel").textContent={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?",ville:"Où se trouve la ville…"}[q.type];
+  $("qname").textContent=q.type==="drapeau"?flag(q.c.a2):placeName(q);
   $("qname").classList.toggle("flagq",q.type==="drapeau");
   $("hintbtn").textContent=q.type==="drapeau"?"💡 Voir le nom (points ÷ 2)":"💡 Indice (points ÷ 2)";
   $("qcard").classList.remove("swap"); void $("qcard").offsetWidth; $("qcard").classList.add("swap");
@@ -426,7 +454,7 @@ function startTurn(){
 function speakQuestion(prefix=""){
   if(!game) return;
   const q=game.list[game.i];
-  say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="capitale"?`Où se trouve ${q.c.cap} ?`:"À quel pays est ce drapeau ?"));
+  say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="drapeau"?"À quel pays est ce drapeau ?":`Où se trouve ${placeName(q)} ?`));
 }
 $("qname").addEventListener("click",()=>{ if(voiceOn()) speakQuestion(); });
 function setGo(txt,disabled,green){const b=$("go");b.textContent=txt;b.disabled=disabled;b.classList.toggle("green",green);}
@@ -453,7 +481,7 @@ function startTimer(){
   tick();
 }
 
-$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?`drapeau ${de(c)}${c.nom}`:`capitale ${de(c)}${c.nom}`;};
+$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?`drapeau ${de(c)}${c.nom}`:q.type==="ville"?`ville située ${dans(c)}${c.nom}`:`capitale ${de(c)}${c.nom}`;};
 
 function placeGuess(cx,cy){
   if(!canPlay()) return;
@@ -495,30 +523,37 @@ function submitTurn(timeout){
 }
 
 // points d'une oie posée
+// - pays / drapeau : distance à la frontière (0 = dans le pays) ;
+// - capitale / ville (indulgent) : tous les points dans le bon pays (ou à ≤ 50 km de la ville, pour les villes côtières),
+//   sinon points selon la distance au pays. `dT` = distance à la ville, pour l'affichage.
 function scoreRec(rec,q,f){
-  const c=q.c, capPt=[c.lon,c.lat];
-  if(!rec.guess) return {km:null,pts:0,bonus:0,gained:0,good:false,hint:rec.hint};
-  // pays absent de la carte (Tuvalu) : on mesure jusqu'à sa capitale
-  const byCap=q.type==="capitale"||!f;
-  let km=byCap?Math.round(d3.geoDistance(rec.guess,capPt)*R):Math.round(distToFeature(f,rec.guess)*R);
-  if(byCap&&km<=50) km=0;
+  const tgt=targetOf(q);
+  if(!rec.guess) return {km:null,pts:0,bonus:0,gained:0,good:false,perfect:false,hint:rec.hint,dT:null};
+  const dT=Math.round(d3.geoDistance(rec.guess,tgt)*R);
+  let km, good=false, perfect=false;
+  if(q.type==="capitale"||q.type==="ville"){
+    good=dT<=50||(!!f&&d3.geoContains(f,rec.guess));
+    km=good?0:f?Math.round(distToFeature(f,rec.guess)*R):dT;
+    perfect=dT<=50;
+  } else if(f){ km=Math.round(distToFeature(f,rec.guess)*R); perfect=good=km===0; }
+  else { km=dT<=50?0:dT; perfect=good=km===0; } // pays absent de la carte (Tuvalu) : distance à la capitale
   let pts=pointsFor(km); if(rec.hint) pts=Math.round(pts/2);
   const bonus=Math.round(BONUS_MAX*(rec.left/CHRONO_S)*(pts/MAXPTS));
-  // capitale : l'oie dans le bon pays → pas de révision (les points restent selon la distance à la ville)
-  const good=q.type==="capitale"&&!!f&&d3.geoContains(f,rec.guess);
-  return {km,pts,bonus,gained:pts+bonus,good,hint:rec.hint};
+  return {km,pts,bonus,gained:pts+bonus,good,perfect,hint:rec.hint,dT};
 }
-const verdict=r=>r.km===null?"⏰ Temps écoulé !":r.km===0?"🪿 Atterrissage parfait !":r.good&&r.pts<850?"✅ Bon pays !":r.pts>=850?"😮 Presque !":r.pts>=650?"🔥 Super !":r.pts>=400?"👍 Pas mal !":r.pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
+const verdict=r=>r.km===null?"⏰ Temps écoulé !":r.perfect?"🪿 Atterrissage parfait !":r.good?"✅ Bon pays !":r.pts>=850?"😮 Presque !":r.pts>=650?"🔥 Super !":r.pts>=400?"👍 Pas mal !":r.pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
 
 function reveal(){
-  const q=game.list[game.i], c=q.c, f=byIso.get(c.iso), capPt=[c.lon,c.lat];
+  const q=game.list[game.i], c=q.c, f=byIso.get(c.iso), capPt=targetOf(q), name=placeName(q);
   const res=game.recs.map(r=>scoreRec(r,q,f));
-  res.forEach((r,p)=>{ const P=game.players[p]; P.total+=r.gained; P.log.push({label:q.type!=="capitale"?c.nom:c.cap,fl:flag(c.a2),pts:r.gained}); });
+  res.forEach((r,p)=>{ const P=game.players[p]; P.total+=r.gained; P.log.push({label:name,fl:flag(c.a2),pts:r.gained}); });
   Object.assign(game,{answered:true,target:capPt,results:res});
   $("turn").hidden=true;
 
   // révisions + passeport : pour le 1er joueur (Nils)
-  const r0=res[0], ok=r0.km!==null&&(r0.km<=OK_KM||r0.good)&&!r0.hint, rk=`${q.type}|${c.iso}`;
+  // réussi : pays/drapeau à ≤ OK_KM de la frontière ; capitale/ville dans le bon pays ; jamais avec l'indice
+  const r0=res[0], ville=q.type==="capitale"||q.type==="ville";
+  const ok=r0.km!==null&&!r0.hint&&(ville?r0.good:r0.km<=OK_KM), rk=revKey(q);
   let revMsg="", stampMsg="";
   if(ok){
     if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; }
@@ -533,23 +568,24 @@ function reveal(){
   redrawOverlay();
   [...$("dots").children][game.i].className="done";
   $("rflag").textContent=flag(c.a2);
-  const answer=q.type!=="capitale"?`${c.nom} · capitale : ${c.cap}`:`${c.cap}, capitale ${de(c)}${c.nom}`;
+  const where=`${dans(c)}${c.nom}`;
+  const what=q.type==="capitale"?`${c.cap}, capitale ${de(c)}${c.nom}`:q.type==="ville"?`${name}, ${where}`:`${c.nom} · capitale : ${c.cap}`;
   if(!duo()){
-    const r=r0, where=`${dans(c)}${c.nom}`;
+    const r=r0;
     $("rmsg").textContent=verdict(r);
     countUp($("rpts"),r.gained,"+"," pts");
     $("rbonus").textContent=[r.bonus?`⚡ dont +${r.bonus} bonus vitesse`:(r.hint&&r.km!==null?"💡 indice utilisé : points ÷ 2":""),stampMsg||revMsg].filter(Boolean).join(" · ");
-    $("rdetail").textContent = r.km===null ? (q.type!=="capitale"?`C'était ici : ${c.nom} (capitale ${c.cap})`:`${c.cap} est la capitale ${de(c)}${c.nom}`)
-      : q.type!=="capitale" ? (r.km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(r.km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
-      : r.km===0 ? `Tu as trouvé ${c.cap}, capitale ${de(c)}${c.nom} !`
-      : r.good ? `Ton oie est bien ${where}, à ${fmt(r.km)} km de ${c.cap}`
-      : `À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`;
+    $("rdetail").textContent = r.km===null ? `C'était ici : ${what}`
+      : !ville ? (r.km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(r.km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
+      : r.perfect ? `Tu as trouvé ${what} !`
+      : r.good ? `Ton oie est bien ${where} 👍 ${name} est à ${fmt(r.dT)} km`
+      : `${name} est ${where} : ton oie est à ${fmt(r.km)} km de la frontière`;
   } else {
     const [a,b]=res, P=game.players;
     $("rmsg").textContent=a.gained===b.gained?(a.km===null?"⏰ Personne n'a joué !":"🤝 Égalité !"):`🏆 ${P[a.gained>b.gained?0:1].name} gagne la manche !`;
     $("rpts").innerHTML=res.map((r,p)=>`<span class="duo"><i class="pdot" style="background:${PCOL[p]}"></i>${P[p].name} <b>+${fmt(r.gained)}</b></span>`).join("");
-    $("rbonus").textContent=[res.map((r,p)=>`${P[p].name} : ${r.km===null?"pas joué":r.km===0?"pile dedans !":r.good?"bon pays":fmt(r.km)+" km"}`).join(" · "),stampMsg].filter(Boolean).join(" · ");
-    $("rdetail").textContent=answer;
+    $("rbonus").textContent=[res.map((r,p)=>`${P[p].name} : ${r.km===null?"pas joué":r.perfect?"pile dessus !":r.good?"bon pays":fmt(r.km)+" km"}`).join(" · "),stampMsg].filter(Boolean).join(" · ");
+    $("rdetail").textContent=what;
   }
   $("rstamp").innerHTML=stampMsg?stampSVG(c):"";
   $("rfacttxt").textContent=FACTS[c.a2]||"";
@@ -559,7 +595,7 @@ function reveal(){
   setGo(game.i+1<game.n?"Suivant ➜":"Voir le score 🏁",false,true);
   // son + confettis selon la meilleure oie
   const best=res.reduce((m,r)=>r.gained>m.gained?r:m,res[0]);
-  if(res.some(r=>r.km===0)){ sfx.perfect(); confetti(60); }
+  if(res.some(r=>r.perfect)){ sfx.perfect(); confetti(60); }
   else if(best.pts>=650||best.good) sfx.good();
   else if(best.pts>=300) sfx.ok();
   else sfx.far();
@@ -571,7 +607,9 @@ function reveal(){
   let x0=Math.min(pb[0][0],fb[0][0]),y0=Math.min(pb[0][1],fb[0][1]),x1=Math.max(pb[1][0],fb[1][0]),y1=Math.max(pb[1][1],fb[1][1]);
   if(x1-x0>W*0.7){[[x0,y0],[x1,y1]]=pb;}
   const topH=$("qcard").getBoundingClientRect().bottom+10, botH=H-$("result").getBoundingClientRect().top+10;
-  const availH=Math.max(120,H-topH-botH), availW=W-90;
+  // on garde sous la cible la place de son étiquette (fiche à 2-3 lignes en apprentissage)
+  const cardH=(game.learn?(q.type==="ville"?3:2):1)*24+34;
+  const availH=Math.max(120,H-topH-botH-cardH), availW=W-90;
   const s=Math.min(30,Math.max(1,Math.min(availW/(x1-x0+40),availH/(y1-y0+40))));
   const t=d3.zoomIdentity.translate(W/2,topH+availH/2).scale(s).translate(-(x0+x1)/2,-(y0+y1)/2);
   svg.transition().duration(900).call(zoom.transform,t);
@@ -618,19 +656,23 @@ function redrawOverlay(){
   gOver.selectAll("*").remove();
   if(!game) return;
   if(game.answered){
-    game.recs.forEach((r,p)=>{ const km=game.results[p].km;
-      if(r.guess&&km>0) gOver.append("path").attr("class","line").style("stroke",duo()?PCOL[p]:null).attr("d",path({type:"LineString",coordinates:[r.guess,game.target]})); });
+    game.recs.forEach((r,p)=>{ const rr=game.results[p];
+      if(r.guess&&!rr.perfect&&(rr.km>0||rr.dT>50)) gOver.append("path").attr("class","line").style("stroke",duo()?PCOL[p]:null).attr("d",path({type:"LineString",coordinates:[r.guess,game.target]})); });
     const q=game.list[game.i];
     const g=gOver.append("g").attr("class","mk").datum(game.target);
     g.append("circle").attr("class","ripple").attr("r",14).attr("fill","none").attr("stroke","#22b07d").attr("stroke-width",3);
     g.append("circle").attr("r",9).attr("fill","#fff").attr("stroke","#22b07d").attr("stroke-width",3.5);
     g.append("circle").attr("r",4).attr("fill","#22b07d");
-    const label=(q.type!=="capitale"?q.c.nom:q.c.cap);
-    const tw=label.length*8.6+44;
-    const L=g.append("g").attr("class","tlabel");
-    L.append("rect").attr("x",-tw/2).attr("y",-50).attr("width",tw).attr("height",32).attr("rx",16).attr("fill","#22b07d").attr("stroke","#fff").attr("stroke-width",2.5);
-    L.append("path").attr("d","M-7,-19 L0,-11 L7,-19 Z").attr("fill","#22b07d");
-    L.append("text").attr("y",-28).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",800).attr("font-size",17).attr("font-family","Baloo 2, sans-serif").text(flag(q.c.a2)+" "+label);
+    // étiquette : le nom à trouver ; en apprentissage, une fiche pour mémoriser (pays, drapeau, capitale)
+    const lines=game.learn
+      ? [...(q.type==="ville"?[`🏙️ ${q.city.nom}`]:[]), `${flag(q.c.a2)} ${q.c.nom}`, `🏛️ ${q.c.cap}`]
+      : [`${flag(q.c.a2)} ${placeName(q)}`];
+    // sous la cible : l'oie (qui monte au-dessus de son point) ne la cache jamais
+    const LH=24, hgt=lines.length*LH+10, tw=Math.max(...lines.map(l=>l.length))*8.6+40, top=18;
+    const L=g.append("g").attr("class","tlabel"+(game.learn?" learn":""));
+    L.append("rect").attr("x",-tw/2).attr("y",top).attr("width",tw).attr("height",hgt).attr("rx",16).attr("fill","#22b07d").attr("stroke","#fff").attr("stroke-width",2.5);
+    L.append("path").attr("d","M-7,19.5 L0,11 L7,19.5 Z").attr("fill","#22b07d");
+    lines.forEach((t,i)=>L.append("text").attr("y",top+5+LH*(i+1)-6).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",i===0?800:700).attr("font-size",i===0?17:15).attr("font-family","Baloo 2, sans-serif").text(t));
     game.recs.forEach((r,p)=>{ if(r.guess) drawGoose(r.guess,p,{tag:duo()?game.players[p].name:""}); });
     gOver.selectAll(".pin-inner").style("animation","none");
   } else if(game.guess) drawGoose(game.guess,game.turn,{hit:true});
