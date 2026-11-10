@@ -33,6 +33,7 @@
     <div id="qname" title="Toucher pour réécouter">…</div>
     <div id="qhint"></div>
     <button id="hintbtn" hidden>💡 Indice (points ÷ 2)</button>
+    <div id="qopts" hidden></div>
     <div id="timer"></div>
   </div>
 </div>
@@ -60,14 +61,15 @@
 
 <div class="screen" id="home">
   <div class="homewrap">
-  <div class="brand"><span class="globe">🪿</span><span class="logo">Ge<span>oo</span>se</span></div>
+  <div class="brand"><span class="globe" id="brandgoose"></span><span class="logo">Ge<span>oo</span>se</span><span class="lvlbadge" id="lvlbadge"></span></div>
   <div class="panel glass">
     <div class="group"><h3>Je cherche</h3>
-      <div class="choices" data-k="mode">
+      <div class="choices wrap inline" data-k="mode">
         <button class="choice on" data-v="pays"><span class="e">🗺️</span>Pays</button>
         <button class="choice" data-v="capitale"><span class="e">🏛️</span>Capitales</button>
         <button class="choice" data-v="drapeau"><span class="e">🚩</span>Drapeaux</button>
         <button class="choice" data-v="ville"><span class="e">🏙️</span>Villes</button>
+        <button class="choice" data-v="monument"><span class="e">🗿</span>Merveilles</button>
         <button class="choice" data-v="mix"><span class="e">🎲</span>Mélange</button>
       </div></div>
     <div class="group"><h3>Où ?</h3>
@@ -80,13 +82,15 @@
         <button class="choice" data-v="4" title="les raretés"><span class="e">🐉</span>Expert</button>
       </div></div>
     <div class="row2">
-      <div class="group"><h3>Partie</h3>
-        <div class="choices inline" data-k="chrono">
+      <div class="group g-partie"><h3>Partie</h3>
+        <div class="choices" data-k="chrono">
           <button class="choice on" data-v="0"><span class="e">🧭</span>Calme</button>
           <button class="choice" data-v="1"><span class="e">⏱️</span>Chrono</button>
+          <button class="choice" data-v="2"><span class="e">❤️</span>Survie</button>
+          <button class="choice" data-v="3"><span class="e">🔤</span>Quiz</button>
         </div></div>
-      <div class="group"><h3>Joueurs</h3>
-        <div class="choices inline" data-k="players">
+      <div class="group g-joueurs"><h3>Joueurs</h3>
+        <div class="choices" data-k="players">
           <button class="choice on" data-v="1"><span class="e">🙂</span>Solo</button>
           <button class="choice" data-v="2"><span class="e">👥</span>À deux</button>
         </div></div>
@@ -95,15 +99,49 @@
       <label class="name p1"><span>🪿</span><input id="name1" maxlength="12" autocomplete="off" spellcheck="false"></label>
       <label class="name p2"><span>🪿</span><input id="name2" maxlength="12" autocomplete="off" spellcheck="false"></label>
     </div>
-    <button class="btn" id="startbtn">C'est parti ! 🚀<small id="best"></small></button>
+    <div class="startrow">
+      <button class="btn" id="startbtn">C'est parti ! 🚀<small id="best"></small></button>
+      <button class="btn defi" id="defibtn">🗓️ Défi du jour<small id="defin"></small></button>
+    </div>
     <div class="tools">
       <button class="tool" id="learnbtn"><span class="e">📚</span>Révisions<small id="learnn"></small></button>
       <button class="tool" id="passbtn"><span class="e">🛂</span>Passeport<small id="passn"></small></button>
-      <button class="tool sq sound" id="soundhome" aria-label="Sons">🔊<small>Sons</small></button>
-      <button class="tool sq voice" id="voicehome" aria-label="Lecture des questions">🗣️<small>Voix</small></button>
-      <button class="tool sq" id="themebtn" aria-label="Thème">🎨<small id="themen">Atlas</small></button>
+      <button class="tool" id="progbtn"><span class="e">🏆</span>Progrès<small id="progn"></small></button>
+      <button class="tool" id="oiebtn"><span class="e">🪿</span>Mon oie<small>accessoires</small></button>
+      <button class="tool sq" id="setbtn" aria-label="Réglages">⚙️<small>Réglages</small></button>
     </div>
   </div>
+  </div>
+</div>
+
+<div class="screen hidden" id="oie">
+  <div class="panel glass sheet">
+    <div class="passhead"><div class="ptitle">🪿 Mon oie</div><button class="glass round" id="oieclose" aria-label="Fermer">✕</button></div>
+    <div class="oietop"><div id="oiepreview"></div><div id="oielvl"></div></div>
+    <p class="hintline">Gagne de l'XP en jouant pour débloquer des accessoires. Touche-les pour les mettre ou les enlever.</p>
+    <div id="oiegrid"></div>
+  </div>
+</div>
+
+<div class="screen hidden" id="progres">
+  <div class="panel glass sheet passpanel">
+    <div class="passhead"><div class="ptitle">🏆 Progrès</div><button class="glass round" id="progclose" aria-label="Fermer">✕</button></div>
+    <div class="ptabs" id="progtabs"><button class="ptab on" data-k="medailles">🏅 Médailles</button><button class="ptab" data-k="stats">📊 Tableau de bord</button></div>
+    <div id="progbody"></div>
+  </div>
+</div>
+
+<div class="screen hidden" id="reglages">
+  <div class="panel glass sheet">
+    <div class="passhead"><div class="ptitle">⚙️ Réglages</div><button class="glass round" id="setclose" aria-label="Fermer">✕</button></div>
+    <div class="setrow"><span>Sons et bruitages</span><button class="tool sq sound" aria-label="Sons">🔊<small>Sons</small></button></div>
+    <div class="setrow"><span>Lire les questions à voix haute</span><button class="tool sq voice" aria-label="Voix">🗣️<small>Voix</small></button></div>
+    <div class="group"><h3>Thème</h3>
+      <div class="choices" id="themes">
+        <button class="choice" data-t="atlas"><span class="e">🗺️</span>Atlas</button>
+        <button class="choice" data-t="neon"><span class="e">✨</span>Néon</button>
+        <button class="choice" data-t="carte"><span class="e">📜</span>Vieille carte</button>
+      </div></div>
   </div>
 </div>
 
@@ -121,6 +159,7 @@
 
 <div class="screen hidden" id="end">
   <div class="panel glass">
+    <div id="endgoose"></div>
     <div id="endtitle" style="font-size:28px;font-weight:800">Partie terminée !</div>
     <div class="stars" id="stars"></div>
     <div class="bigscore" id="final">0</div>
@@ -128,6 +167,8 @@
     <div style="color:var(--muted);font-weight:700" id="outof">points sur 10 000</div>
     <div id="newbest" style="font-weight:800;color:var(--good-d);min-height:26px;font-size:18px"></div>
     <div id="newstamps"></div>
+    <div id="endmedals"></div>
+    <div id="xpline"></div>
     <div id="recap"></div>
     <div class="stack">
       <button class="btn" id="againbtn">Rejouer 🔁</button>
