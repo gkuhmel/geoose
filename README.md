@@ -30,5 +30,6 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 - **🛂 Passeport** : un tampon par pays et par mode réussi, progression par continent, et une carte du monde des pays visités.
 - **🔊 Sons et 🗣️ voix** : cri d'oie à l'atterrissage parfait, ding, tampon… ; lecture des questions à voix haute en option (bouton Voix sur l'accueil, désactivée par défaut).
 - **💡 Le savais-tu ?** : une info amusante sur le pays après chaque réponse.
+- **🎨 Thèmes** : Atlas (clair), Néon (nuit lumineuse), Vieille carte (parchemin) — bouton 🎨 sur l'accueil.
 - **App** : sur iPhone / iPad, Safari → Partager → « Sur l'écran d'accueil » : plein écran, icône oie, marche hors ligne.
 - Records stockés en `localStorage` par mode / niveau / chrono ; révisions dans `geoose-revisions`.

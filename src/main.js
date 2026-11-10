@@ -98,7 +98,7 @@ const gCoast=root.append("g").attr("class","coast");
 const gHover=root.append("path").attr("class","hover");
 const gOcean=root.append("g");
 const gOver=root.append("g");
-const lands=gLand.selectAll("path").data(features).join("path").attr("class","land").attr("fill",(d,i)=>PAL[col[i]]);
+const lands=gLand.selectAll("path").data(features).join("path").attr("class",(d,i)=>"land c"+col[i]); // couleur = variable du thème (--l0…--l6)
 const OCEANS=[["OCÉAN ATLANTIQUE",-38,30],["OCÉAN ATLANTIQUE",-18,-22],["OCÉAN PACIFIQUE",-140,8],["OCÉAN PACIFIQUE",165,22],["OCÉAN INDIEN",78,-18],["Mer Méditerranée",17,34.6,4],["OCÉAN ARCTIQUE",-5,78],["Mer du Nord",3.5,56.3,6]];
 let W=0,H=0,k=1,MH=0;
 
@@ -341,8 +341,20 @@ function showVoice(){ document.querySelectorAll(".voice").forEach(b=>{ b.firstCh
 document.querySelectorAll(".voice").forEach(b=>b.addEventListener("click",()=>{ setVoice(!voiceOn()); unlock(); showVoice(); if(voiceOn()) say("Je lirai les questions."); }));
 showVoice();
 
+// ---------- thèmes : Atlas (clair), Néon (nuit lumineuse), Vieille carte (parchemin) ----------
+const THEMES=[["atlas","Atlas","#5fb3e0"],["neon","Néon","#0e1238"],["carte","Carte","#c9d1ae"]];
+function applyTheme(id){
+  const t=THEMES.find(x=>x[0]===id)||THEMES[0];
+  if(t[0]==="atlas") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=t[0];
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content",t[2]);
+  $("themen").textContent=t[1];
+  store.set("geoose-theme",t[0]);
+}
+applyTheme(store.get("geoose-theme")||"atlas");
+$("themebtn").onclick=()=>{ const cur=document.documentElement.dataset.theme||"atlas", i=THEMES.findIndex(x=>x[0]===cur); applyTheme(THEMES[(i+1)%THEMES.length][0]); sfx.plop(); };
+
 // ---------- carte du passeport : pays tamponnés coloriés à l'encre du continent ----------
-const PASTEL={europe:"#9ebbe8",afrique:"#f2ae95",asie:"#eba0b0",ameriques:"#92d3b0",oceanie:"#c7aae8"};
+const PASTEL={europe:"var(--p-europe)",afrique:"var(--p-afrique)",asie:"var(--p-asie)",ameriques:"var(--p-ameriques)",oceanie:"var(--p-oceanie)"};
 let pmap=false;
 function openPassMap(){
   pmap=true;
@@ -384,7 +396,7 @@ function showBest(){
   $("names").hidden=solo;
   const n=revItems().length;
   $("learnbtn").disabled=n===0;
-  $("learnn").textContent=n?`${n} à revoir`:"rien à revoir 🎉";
+  $("learnn").textContent=n?`${n} à revoir`:"à jour 🎉";
   $("passn").textContent=`${C.filter(stamped).length} / ${C.length}`;
 }
 
