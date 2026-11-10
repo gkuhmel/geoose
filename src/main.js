@@ -234,7 +234,7 @@ const NUM_KEYS=new Set(["level","chrono","players"]);
 const PCOL=["#4aa3d6","#f08a24"];
 let equip=getEquip();
 
-$("conts").innerHTML=Object.entries(CONTINENTS).map(([k,v])=>`<button class="choice" data-v="${k}"><span class="e">${v.e}</span>${v.nom}</button>`).join("");
+$("conts").innerHTML=Object.entries(CONTINENTS).map(([k,v])=>`<button class="choice" data-v="${k}"><span class="e">${v.e}</span>${k==="monde"?"Le monde entier":v.nom}</button>`).join("");
 document.querySelectorAll(".choices[data-k]").forEach(g=>{
   const key=g.dataset.k;
   g.querySelectorAll(".choice").forEach(x=>x.classList.toggle("on",x.dataset.v===String(opts[key])));
@@ -245,6 +245,8 @@ document.querySelectorAll(".choices[data-k]").forEach(g=>{
     store.set(OPTS_KEY,JSON.stringify(opts));
     if(key==="cont"&&!game) svg.transition().duration(700).call(zoom.transform,homeView());
     showBest();
+    // assistant « nouvelle partie » : un choix fait passer tout seul à l'étape suivante
+    const st=g.closest(".wizstep"); if(st&&+st.dataset.step<3){ sfx.plop(); setTimeout(()=>showStep(+st.dataset.step+1),260); }
   });
 });
 // prénoms (mode à deux)
@@ -375,8 +377,19 @@ $("pgrid").addEventListener("click",e=>{
 });
 const openScreen=id=>{ unlock(); $(id).classList.remove("hidden"); };
 const closeScreen=id=>{ $(id).classList.add("hidden"); showBest(); };
-$("passbtn").onclick=()=>{ renderPassport(); openScreen("passport"); };
-$("passclose").onclick=()=>closeScreen("passport");
+// barre d'onglets du menu : Jouer · Passeport · Progrès · Mon oie (visible hors partie)
+const TABS={passport:()=>renderPassport(),progres:()=>renderProgres(),oie:()=>renderOie()};
+function openTab(t){
+  unlock();
+  for(const k of Object.keys(TABS)) $(k).classList.toggle("hidden",k!==t);
+  ["wizard","reglages"].forEach(id=>$(id).classList.add("hidden"));
+  $("home").classList.toggle("hidden",t!=="jouer");
+  if(TABS[t]) TABS[t]();
+  document.querySelectorAll("#tabbar button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  showBest();
+}
+$("tabbar").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b){ openTab(b.dataset.tab); sfx.plop(); } });
+$("passclose").onclick=()=>openTab("jouer");
 
 // ---------- réglages : sons, voix, thème ----------
 function showSound(){ document.querySelectorAll(".sound").forEach(b=>{ b.firstChild.textContent=soundOn()?"🔊":"🔇"; b.classList.toggle("off",!soundOn()); }); }
@@ -422,7 +435,7 @@ function closePassMap(){
   pmap=false; document.body.classList.remove("pmap");
   lands.style("fill",null);
   $("pmapbar").hidden=true; $("pmapcard").hidden=true;
-  renderPassport(); $("home").classList.remove("hidden"); $("passport").classList.remove("hidden");
+  openTab("passport");
   svg.transition().duration(700).call(zoom.transform,homeView());
 }
 function passMapTap(cx,cy){
@@ -441,6 +454,7 @@ function renderLevel(){
   const L=levelInfo();
   $("lvlbadge").innerHTML=`Niv. ${L.lvl}<i style="width:${Math.round(100*L.cur/L.need)}%"></i>`;
   $("brandgoose").innerHTML=gooseSVG(equip,"idle");
+  if($("splashgoose")) $("splashgoose").innerHTML=gooseSVG(equip,"");
 }
 function renderOie(){
   const L=levelInfo();
@@ -458,8 +472,7 @@ $("oiegrid").addEventListener("click",e=>{
   if(equip[a.slot]===a.id) delete equip[a.slot]; else equip[a.slot]=a.id;
   setEquip(equip); sfx.plop(); renderOie(); renderLevel();
 });
-$("oiebtn").onclick=()=>{ renderOie(); openScreen("oie"); };
-$("oieclose").onclick=()=>closeScreen("oie");
+$("oieclose").onclick=()=>openTab("jouer");
 
 // ---------- progrès : médailles + tableau pour les parents ----------
 let progTab="medailles";
@@ -498,26 +511,77 @@ function renderProgres(){
   <h4>🔀 Confusions fréquentes</h4><ul>${confs}</ul>`;
 }
 $("progtabs").addEventListener("click",e=>{ const b=e.target.closest(".ptab"); if(b){ progTab=b.dataset.k; renderProgres(); } });
-$("progbtn").onclick=()=>{ renderProgres(); openScreen("progres"); };
-$("progclose").onclick=()=>closeScreen("progres");
+$("progclose").onclick=()=>openTab("jouer");
 
 // ---------- accueil ----------
 const special=()=>opts.chrono>=2; // survie et quiz : solo
 const bestKey=()=>`geoose4-${opts.mode}-${opts.level}-${opts.chrono}-${opts.cont}`;
+const LBL={mode:{pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles",mix:"🎲 Mélange"},
+  level:["","Facile","Moyen","Difficile","Expert"],chrono:["Calme","Chrono","Survie","Quiz"]};
+const optsSummary=()=>`${LBL.mode[opts.mode]} · ${CONTINENTS[opts.cont].nom} · ${LBL.level[opts.level]} · ${LBL.chrono[opts.chrono]}${opts.players>1&&!special()?" · à deux":""}`;
 function showBest(){
   const solo=opts.players===1||special(), b=store.get(bestKey());
-  $("best").textContent=solo&&b?(opts.chrono===2?`🏆 Record : ${b} bonnes réponses`:`🏆 Record : ${fmt(+b)} pts`):"";
+  $("best").textContent=solo&&b?(opts.chrono===2?`🏆 record : ${b} bonnes réponses`:`🏆 record : ${fmt(+b)} pts`):"";
   $("names").hidden=solo;
   document.querySelector('[data-k="players"]').classList.toggle("dim",special());
+  // menu
+  const played=!!store.get("geoose-last");
+  $("replaybtn").firstChild.textContent=played?"🔁 Rejouer comme la dernière fois":"▶ Jouer tout de suite";
+  $("replayn").textContent=optsSummary();
   const n=revItems().length;
   $("learnbtn").disabled=n===0;
-  $("learnn").textContent=n?`${n} à revoir`:"à jour 🎉";
-  $("passn").textContent=`${C.filter(stamped).length} / ${C.length}`;
+  $("learnn").textContent=n?`${n} à revoir`:"rien à revoir 🎉";
+  $("passn").textContent=`${C.filter(stamped).length}/${C.length}`;
   $("progn").textContent=`${Object.keys(getMedals()).length} 🏅`;
   const df=getDefi(), st=currentStreak(df);
   $("defibtn").classList.toggle("done",defiDoneToday(df));
-  $("defin").textContent=defiDoneToday(df)?`✅ fait · 🔥 ${st}`:st?`🔥 ${st} jour${st>1?"s":""}`:"5 questions";
+  $("defin").textContent=defiDoneToday(df)?`✅ fait aujourd'hui · 🔥 ${st}`:st?`5 questions · garde ta série 🔥 ${st}`:"5 questions · commence une série 🔥";
+  $("streaktag").textContent=`🔥 ${st}`;
   renderLevel();
+}
+
+// ---------- assistant « nouvelle partie » : une question par écran (quoi → où → niveau → comment) ----------
+let wizStep=0;
+function showStep(i){
+  wizStep=i;
+  document.querySelectorAll(".wizstep").forEach(s=>s.classList.toggle("on",+s.dataset.step===i));
+  [...$("wizdots").children].forEach((d,k)=>{ d.className=k<i?"done":k===i?"cur":""; });
+  $("wizback").textContent=i===0?"‹ Menu":"‹ Retour";
+  $("wiznext").firstChild.textContent=i<3?"Suivant ›":"C'est parti ! 🚀";
+  $("wiznext").classList.toggle("go",i===3);
+  showBest();
+}
+$("newbtn").onclick=()=>{ unlock(); $("home").classList.add("hidden"); $("wizard").classList.remove("hidden"); document.body.classList.add("wiz"); showStep(0); };
+$("wizback").onclick=()=>{ if(wizStep>0) showStep(wizStep-1); else { $("wizard").classList.add("hidden"); document.body.classList.remove("wiz"); openTab("jouer"); } };
+$("wiznext").onclick=()=>{ if(wizStep<3) showStep(wizStep+1); else startGame("normal"); };
+
+// ---------- splash : globe qui tourne, l'oie fait le tour ----------
+function runSplash(){
+  const cv=$("globe"), size=Math.min(260,Math.round(Math.min(W,H)*.62)), dpr=devicePixelRatio||1;
+  cv.width=size*dpr; cv.height=size*dpr; cv.style.width=cv.style.height=size+"px";
+  $("splash").style.setProperty("--g",size+"px");
+  const ctx=cv.getContext("2d"); ctx.scale(dpr,dpr);
+  const r=size/2-4, proj=d3.geoOrthographic().scale(r).translate([size/2,size/2]).clipAngle(90), gp=d3.geoPath(proj,ctx);
+  const th=simplify(PRE,.15), land=topojson.merge(th,th.objects.countries.geometries), grat=d3.geoGraticule10();
+  const css=getComputedStyle(document.documentElement), v=n=>css.getPropertyValue(n).trim();
+  const t0=performance.now();
+  const draw=now=>{
+    if($("splash").classList.contains("hidden")) return;
+    proj.rotate([-20+(now-t0)*.045,-18]);
+    ctx.clearRect(0,0,size,size);
+    const g=ctx.createRadialGradient(size*.38,size*.32,r*.1,size/2,size/2,r);
+    g.addColorStop(0,v("--halo")||"#bfe7f6"); g.addColorStop(1,v("--coast")||"#3d7fa6");
+    ctx.beginPath(); gp({type:"Sphere"}); ctx.fillStyle=g; ctx.fill();
+    ctx.beginPath(); gp(grat); ctx.strokeStyle="rgba(255,255,255,.25)"; ctx.lineWidth=.7; ctx.stroke();
+    ctx.beginPath(); gp(land); ctx.fillStyle=v("--l1")||"#cdeaa9"; ctx.fill(); ctx.strokeStyle=v("--land-bd")||"#fff"; ctx.lineWidth=.8; ctx.stroke();
+    ctx.beginPath(); gp({type:"Sphere"}); ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2; ctx.stroke();
+    requestAnimationFrame(draw);
+  };
+  requestAnimationFrame(draw);
+  const end=()=>{ if($("splash").classList.contains("hidden")) return; $("splash").classList.add("hidden"); document.body.classList.remove("splash"); openTab("jouer"); };
+  $("splash").addEventListener("pointerdown",end,{once:true});
+  setTimeout(end,2600);
+  if(/nosplash/.test(location.search)) end(); // tests automatiques
 }
 
 // ---------- partie ----------
@@ -534,7 +598,9 @@ function startGame(kind="normal"){
     view:learn||defi?"monde":opts.cont,learned:0,stamps:[],medals:[],run:0,okCount:0,lives:3,t0Game:performance.now(),
     players:Array.from({length:np},(_,p)=>({name:np>1?names[p]:"",total:0,log:[]}))};
   $("dots").innerHTML=survie?"":"<i></i>".repeat(game.n);
-  ["home","end","passport","oie","progres","reglages"].forEach(id=>$(id).classList.add("hidden"));
+  ["home","wizard","splash","end","passport","oie","progres","reglages"].forEach(id=>$(id).classList.add("hidden"));
+  document.body.classList.add("ingame"); document.body.classList.remove("wiz");
+  if(kind==="normal") store.set("geoose-last","1");
   $("clock").classList.toggle("on",game.chrono); $("timer").classList.toggle("on",game.chrono);
   setScore();
   nextRound();
@@ -962,20 +1028,22 @@ function goHome(){
   cancelAnimationFrame(timerRAF); try{speechSynthesis.cancel();}catch(e){}
   game=null; endDrag(); updateHover(); redrawOverlay(); lands.classed("target",false);
   $("result").classList.remove("show"); setGo("Valider 🎯",true,false); $("qopts").hidden=true;
-  ["end","passport","oie","progres","reglages"].forEach(id=>$(id).classList.add("hidden")); $("home").classList.remove("hidden");
+  $("end").classList.add("hidden"); document.body.classList.remove("ingame","wiz");
+  openTab("jouer");
   svg.transition().duration(700).call(zoom.transform,homeView());
-  showBest();
 }
-$("startbtn").onclick=()=>startGame("normal");
+$("replaybtn").onclick=()=>startGame("normal");
 $("defibtn").onclick=()=>startGame("defi");
 $("learnbtn").onclick=()=>startGame("learn");
 $("againbtn").onclick=()=>startGame(game?.kind||"normal");
 $("menubtn").onclick=goHome;
 $("homebtn").onclick=goHome;
 showBest();
+renderLevel();
 let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{layout();svg.call(zoom.transform,!game||!game.answered?homeView():d3.zoomTransform(svg.node()));},150);});
 layout();
 svg.call(zoom.transform,homeView());
+runSplash();
 // pré-calcule les niveaux de détail pendant l'écran d'accueil (évite un à-coup au premier zoom)
 setTimeout(()=>lodFor(1),300); setTimeout(()=>lodFor(2),900);
 

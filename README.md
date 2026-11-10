@@ -16,6 +16,8 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 
 ## Règles
 
+- **Menu** : splash (globe qui tourne) → 4 grosses actions (rejouer, nouvelle partie pas à pas, défi du jour, réviser) + onglets Jouer · Passeport · Progrès · Mon oie ; ⚙️ pour sons, voix et thème.
+
 - **Modes** : Pays · Capitales · Drapeaux · Villes (146 grandes villes qui ne sont pas des capitales) · Mélange — 10 manches, parmi **tous les pays du monde** (197 : ONU + Vatican, Palestine, Kosovo, Taïwan).
 - **Niveaux** (par *renommée*, pas par nombre de pays) : 🐣 Facile (les célèbres) · 🦊 Moyen (assez connus) · 🦅 Difficile (moins connus) · 🐉 Expert (les raretés). Chaque pays a une renommée par mode : l'Australie est facile, mais Canberra est « difficile » ; le drapeau du Luxembourg est « expert ».
 - **📚 Apprentissage** : ne repose que les questions ratées (tous modes confondus, chacune dans son mode d'origine). Ratée = oie à plus de 150 km ou indice utilisé (pour une capitale, l'oie dans le bon pays n'est pas ratée) ; une bonne réponse la retire de la liste (en partie normale aussi).

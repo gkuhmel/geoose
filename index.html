@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="splash">
 <svg id="map"></svg>
 
 <div id="hud">
@@ -59,60 +59,65 @@
   <button class="btn" id="go" disabled>Valider 🎯</button>
 </div>
 
-<div class="screen" id="home">
-  <div class="homewrap">
-  <div class="brand"><span class="globe" id="brandgoose"></span><span class="logo">Ge<span>oo</span>se</span><span class="lvlbadge" id="lvlbadge"></span></div>
-  <div class="panel glass">
-    <div class="group"><h3>Je cherche</h3>
-      <div class="choices wrap inline" data-k="mode">
-        <button class="choice on" data-v="pays"><span class="e">🗺️</span>Pays</button>
-        <button class="choice" data-v="capitale"><span class="e">🏛️</span>Capitales</button>
-        <button class="choice" data-v="drapeau"><span class="e">🚩</span>Drapeaux</button>
-        <button class="choice" data-v="ville"><span class="e">🏙️</span>Villes</button>
-        <button class="choice" data-v="monument"><span class="e">🗿</span>Merveilles</button>
-        <button class="choice" data-v="mix"><span class="e">🎲</span>Mélange</button>
-      </div></div>
-    <div class="group"><h3>Où ?</h3>
-      <div class="choices wrap inline" data-k="cont" id="conts"></div></div>
-    <div class="group"><h3>Niveau</h3>
-      <div class="choices" data-k="level">
-        <button class="choice on" data-v="1" title="les célèbres"><span class="e">🐣</span>Facile</button>
-        <button class="choice" data-v="2" title="assez connus"><span class="e">🦊</span>Moyen</button>
-        <button class="choice" data-v="3" title="moins connus"><span class="e">🦅</span>Difficile</button>
-        <button class="choice" data-v="4" title="les raretés"><span class="e">🐉</span>Expert</button>
-      </div></div>
-    <div class="row2">
-      <div class="group g-partie"><h3>Partie</h3>
-        <div class="choices" data-k="chrono">
-          <button class="choice on" data-v="0"><span class="e">🧭</span>Calme</button>
-          <button class="choice" data-v="1"><span class="e">⏱️</span>Chrono</button>
-          <button class="choice" data-v="2"><span class="e">❤️</span>Survie</button>
-          <button class="choice" data-v="3"><span class="e">🔤</span>Quiz</button>
-        </div></div>
-      <div class="group g-joueurs"><h3>Joueurs</h3>
-        <div class="choices" data-k="players">
-          <button class="choice on" data-v="1"><span class="e">🙂</span>Solo</button>
-          <button class="choice" data-v="2"><span class="e">👥</span>À deux</button>
-        </div></div>
-    </div>
-    <div id="names" hidden>
-      <label class="name p1"><span>🪿</span><input id="name1" maxlength="12" autocomplete="off" spellcheck="false"></label>
-      <label class="name p2"><span>🪿</span><input id="name2" maxlength="12" autocomplete="off" spellcheck="false"></label>
-    </div>
-    <div class="startrow">
-      <button class="btn" id="startbtn">C'est parti ! 🚀<small id="best"></small></button>
-      <button class="btn defi" id="defibtn">🗓️ Défi du jour<small id="defin"></small></button>
-    </div>
-    <div class="tools">
-      <button class="tool" id="learnbtn"><span class="e">📚</span>Révisions<small id="learnn"></small></button>
-      <button class="tool" id="passbtn"><span class="e">🛂</span>Passeport<small id="passn"></small></button>
-      <button class="tool" id="progbtn"><span class="e">🏆</span>Progrès<small id="progn"></small></button>
-      <button class="tool" id="oiebtn"><span class="e">🪿</span>Mon oie<small>accessoires</small></button>
-      <button class="tool sq" id="setbtn" aria-label="Réglages">⚙️<small>Réglages</small></button>
-    </div>
-  </div>
+<div class="screen" id="splash">
+  <div class="splashwrap">
+    <div class="globewrap"><canvas id="globe"></canvas><div class="orbit"><div class="orbiter" id="splashgoose"></div></div></div>
+    <div class="logo">Ge<span>oo</span>se</div>
+    <div class="splashsub">Fais atterrir l'oie au bon endroit !</div>
   </div>
 </div>
+
+<div class="screen hidden" id="home">
+  <div class="homewrap">
+    <div class="hhead">
+      <div id="brandgoose"></div>
+      <div class="hhello"><b>Prêt pour le voyage ?</b><span><span class="lvlbadge" id="lvlbadge"></span><span class="tag" id="streaktag"></span></span></div>
+      <button class="glass round" id="setbtn" aria-label="Réglages">⚙️</button>
+    </div>
+    <button class="big b-replay" id="replaybtn">🔁 Rejouer comme la dernière fois<small id="replayn"></small></button>
+    <button class="big b-new" id="newbtn">🧭 Nouvelle partie<small>je choisis pas à pas</small></button>
+    <button class="big b-defi" id="defibtn">🗓️ Défi du jour<small id="defin"></small></button>
+    <button class="big b-rev" id="learnbtn">📚 Réviser mes erreurs<small id="learnn"></small></button>
+  </div>
+</div>
+
+<div class="screen hidden" id="wizard">
+  <div class="wizwrap">
+    <div class="wizdots" id="wizdots"><i></i><i></i><i></i><i></i></div>
+    <div class="wizstep" data-step="0"><h2>Que veux-tu trouver ?</h2>
+      <div class="choices bigch" data-k="mode">
+        <button class="choice on" data-v="pays"><span class="e">🗺️</span>Pays<small>197 pays</small></button><button class="choice" data-v="capitale"><span class="e">🏛️</span>Capitales<small>Paris, Tokyo…</small></button><button class="choice" data-v="drapeau"><span class="e">🚩</span>Drapeaux<small>devine le pays</small></button>
+        <button class="choice" data-v="ville"><span class="e">🏙️</span>Villes<small>New York, Rio…</small></button><button class="choice" data-v="monument"><span class="e">🗿</span>Merveilles<small>monuments, animaux</small></button><button class="choice" data-v="mix"><span class="e">🎲</span>Mélange<small>un peu de tout</small></button>
+      </div></div>
+    <div class="wizstep" data-step="1"><h2>Où veux-tu aller ?</h2>
+      <div class="choices bigch" data-k="cont" id="conts"></div></div>
+    <div class="wizstep" data-step="2"><h2>Quel niveau ?</h2>
+      <div class="choices bigch" data-k="level">
+        <button class="choice on" data-v="1"><span class="e">🐣</span>Facile<small>les plus célèbres</small></button><button class="choice" data-v="2"><span class="e">🦊</span>Moyen<small>assez connus</small></button><button class="choice" data-v="3"><span class="e">🦅</span>Difficile<small>moins connus</small></button><button class="choice" data-v="4"><span class="e">🐉</span>Expert<small>les raretés</small></button>
+      </div></div>
+    <div class="wizstep" data-step="3"><h2>Comment on joue ?</h2>
+      <div class="choices bigch" data-k="chrono">
+        <button class="choice on" data-v="0"><span class="e">🧭</span>Calme<small>prends ton temps</small></button><button class="choice" data-v="1"><span class="e">⏱️</span>Chrono<small>15 s par question</small></button><button class="choice" data-v="2"><span class="e">❤️</span>Survie<small>3 vies, jusqu'où ?</small></button><button class="choice" data-v="3"><span class="e">🔤</span>Quiz<small>choisis parmi 4</small></button>
+      </div>
+      <div class="choices inline" data-k="players">
+        <button class="choice on" data-v="1"><span class="e">🙂</span>Seul</button>
+        <button class="choice" data-v="2"><span class="e">👥</span>À deux</button>
+      </div>
+      <div id="names" hidden>
+        <label class="name p1"><span>🪿</span><input id="name1" maxlength="12" autocomplete="off" spellcheck="false"></label>
+        <label class="name p2"><span>🪿</span><input id="name2" maxlength="12" autocomplete="off" spellcheck="false"></label>
+      </div>
+    </div>
+    <div class="wiznav"><button class="btn ghost" id="wizback">‹ Retour</button><button class="btn" id="wiznext">Suivant ›<small id="best"></small></button></div>
+  </div>
+</div>
+
+<nav id="tabbar">
+  <button data-tab="jouer" class="on"><b>🎮</b>Jouer</button>
+  <button data-tab="passport"><b>🛂</b>Passeport<small id="passn"></small></button>
+  <button data-tab="progres"><b>🏆</b>Progrès<small id="progn"></small></button>
+  <button data-tab="oie"><b>🪿</b>Mon oie</button>
+</nav>
 
 <div class="screen hidden" id="oie">
   <div class="panel glass sheet">
