@@ -578,3 +578,7 @@ body:not(.ingame) #passport,body:not(.ingame) #progres,body:not(.ingame) #oie{pa
 /* hors partie : pas d'interface de jeu fantôme derrière le menu / le splash */
 body:not(.ingame) #hud,body:not(.ingame) #tip,body:not(.ingame) #bottom{display:none}
 body:not(.ingame):not(.pmap) #zoombtns{display:none}
+/* pays-réponse (géométrie exacte, même pour les micro-États) + anneau autour des pays minuscules */
+.tgt{fill:var(--target);stroke:var(--target);stroke-width:calc(2px / var(--k,1));stroke-linejoin:round;pointer-events:none;animation:glow 1.2s ease-in-out infinite alternate}
+.tinyring{fill:none;stroke:var(--target);stroke-width:3.5;stroke-dasharray:6 5;animation:spinring 6s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes spinring{to{transform:rotate(360deg)}}

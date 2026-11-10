@@ -99,6 +99,13 @@ const gHalo=root.append("g").attr("class","halo");
 const gLand=root.append("g");
 const gCoast=root.append("g").attr("class","coast");
 const gHover=root.append("path").attr("class","hover");
+// pays-réponse surligné avec sa géométrie EXACTE : dans la carte simplifiée, les micro-États (Singapour,
+// Bahreïn, Vatican…) se réduisent à un point invisible
+const gTgt=root.append("path").attr("class","tgt");
+let tgtIso=null;
+function setTarget(iso){ tgtIso=iso||null; const f=iso&&byIso.get(iso); gTgt.attr("d",f?path(f):null); }
+// pays trop petit pour être vu même zoomé → on l'entoure d'un anneau
+const tinyIso=iso=>{ const f=byIso.get(iso); if(!f) return true; const [[a,b],[c,d]]=path.bounds(f); return Math.max(c-a,d-b)<2.5; };
 const gOcean=root.append("g");
 const gOver=root.append("g");
 const lands=gLand.selectAll("path").data(features).join("path").attr("class",(d,i)=>"land c"+col[i]); // couleur = variable du thème (--l0…--l6)
@@ -609,7 +616,7 @@ const duo=()=>game.players.length>1;
 const hearts=()=>"❤️".repeat(game.lives)+"🖤".repeat(3-game.lives);
 
 function nextRound(){
-  Object.assign(game,{turn:0,recs:[],results:null,answered:false});
+  Object.assign(game,{turn:0,recs:[],results:null,answered:false,cardPos:null});
   // survie : on rallonge la liste au fur et à mesure, de plus en plus dur (+1 niveau toutes les 5 réussites)
   if(game.survie&&game.i>=game.list.length-1){
     const lv=Math.min(4,opts.level+Math.floor(game.okCount/5));
@@ -631,7 +638,7 @@ function startTurn(){
   if(duo()) $("turn").innerHTML=`<i style="background:${PCOL[game.turn]}"></i>${P.name}, à toi !`;
   $("qcard").classList.remove("swap"); void $("qcard").offsetWidth; $("qcard").classList.add("swap");
   $("qhint").textContent="";
-  lands.classed("target",false); updateHover();
+  setTarget(null); updateHover();
   $("result").classList.remove("show");
   $("qopts").hidden=!game.quiz;
   if(game.quiz){ startQuiz(q); return; }
@@ -682,15 +689,17 @@ function startQuiz(q){
   $("qopts").innerHTML=game.qopts.map((l,i)=>`<button class="qopt${q.type==="drapeau"?" fl":""}" data-i="${i}">${esc(l)}</button>`).join("");
   $("qopts").classList.toggle("flags",q.type==="drapeau");
   setGo("Choisis une réponse",true,false);
-  lands.classed("target",d=>d.id===q.c.iso);
+  setTarget(q.c.iso);
   game.target=targetOf(q);
   redrawOverlay();
-  // cadrage : le pays au centre, assez dézoomé pour voir les voisins
-  const f=byIso.get(q.c.iso), pb=path.bounds({type:"MultiPoint",coordinates:[game.target]}), fb=f?path.bounds(f):pb;
+  frameBox(...quizBox(q),1,undefined,12);
+}
+// cadrage du quiz : le pays au centre, occupant ~40 % de la zone visible (assez dézoomé pour voir les voisins)
+function quizBox(q){
+  const f=byIso.get(q.c.iso), pb=path.bounds({type:"MultiPoint",coordinates:[targetOf(q)]}), fb=f?path.bounds(f):pb;
   let [[x0,y0],[x1,y1]]=fb; if(x1-x0>W*0.9){[[x0,y0],[x1,y1]]=pb;}
-  // le pays occupe ~40 % de la zone visible (on agrandit sa boîte autour de son centre), sans zoomer à l'excès
   const cx=(x0+x1)/2, cy=(y0+y1)/2, hw=Math.max(6,(x1-x0)*1.25), hh=Math.max(6,(y1-y0)*1.25);
-  frameBox(cx-hw,cy-hh,cx+hw,cy+hh,1,undefined,12);
+  return [cx-hw,cy-hh,cx+hw,cy+hh];
 }
 $("qopts").addEventListener("click",e=>{
   const b=e.target.closest(".qopt"); if(!b||!game||game.answered||!game.quiz) return;
@@ -707,6 +716,7 @@ function frameBox(x0,y0,x1,y1,fill=1,botH,maxK=30){
   const s=Math.min(maxK,Math.max(1,fill*Math.min(availW/(x1-x0+40),availH/(y1-y0+40))));
   const t=d3.zoomIdentity.translate(W/2,topH+availH/2).scale(s).translate(-(x0+x1)/2,-(y0+y1)/2);
   svg.transition().duration(900).call(zoom.transform,t);
+  return {t,top:topH,bottom:H-botH};
 }
 
 function startTimer(){
@@ -837,8 +847,7 @@ function reveal(){
   // survie : une vie en moins à chaque erreur
   if(game.survie&&!ok){ game.lives--; $("dots").textContent=hearts(); $("dots").classList.remove("hurt"); void $("dots").offsetWidth; $("dots").classList.add("hurt"); }
 
-  lands.classed("target",d=>d.id===c.iso); updateHover();
-  redrawOverlay();
+  setTarget(c.iso); updateHover();
   if(!game.survie) [...$("dots").children][game.i].className="done";
   $("rflag").textContent=q.type==="monument"?q.mon.e:flag(c.a2);
   const where=`${dans(c)}${c.nom}`;
@@ -848,7 +857,8 @@ function reveal(){
     $("rmsg").textContent=verdict(r);
     countUp($("rpts"),r.gained,"+"," pts");
     $("rbonus").textContent=[r.bonus?`⚡ dont +${r.bonus} bonus vitesse`:(r.hint&&r.km!==null?"💡 indice utilisé : points ÷ 2":""),game.survie&&!ok?`💔 une vie en moins (${hearts()})`:"",stampMsg||revMsg].filter(Boolean).join(" · ");
-    $("rdetail").textContent = r.quiz ? (r.correct?`C'est bien ${what} !`:`C'était ${what}`)
+    const whatArt=pointQ?what:`${nomAvecArticle(c)} · capitale : ${c.cap}`;
+    $("rdetail").textContent = r.quiz ? (r.correct?`C'est bien ${whatArt} !`:`C'était ${whatArt}`)
       : r.km===null ? `C'était ici : ${what}`
       : !pointQ ? (r.km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(r.km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
       : r.perfect ? `Tu as trouvé ${what} !`
@@ -881,9 +891,15 @@ function reveal(){
   const pb=path.bounds({type:"MultiPoint",coordinates:pts2}), fb=f?path.bounds(f):pb;
   let x0=Math.min(pb[0][0],fb[0][0]),y0=Math.min(pb[0][1],fb[0][1]),x1=Math.max(pb[1][0],fb[1][0]),y1=Math.max(pb[1][1],fb[1][1]);
   if(x1-x0>W*0.7){[[x0,y0],[x1,y1]]=pb;}
-  // on garde sous la cible la place de son étiquette (fiche à 2-3 lignes en apprentissage)
-  const cardH=(game.learn?(pointQ&&q.type!=="capitale"?3:2):1)*24+34;
-  frameBox(x0,y0,x1,y1,game.quiz?.6:1,H-$("result").getBoundingClientRect().top+10+cardH);
+  // on garde sous la cible la place de sa fiche, puis on la place pour qu'elle reste entière à l'écran
+  const card=cardOf(q), botH=H-$("result").getBoundingClientRect().top+10+card.h+20;
+  // quiz : même cadrage qu'à la question (sinon un petit pays redevient invisible)
+  const view=game.quiz?frameBox(...quizBox(q),1,botH,12):frameBox(x0,y0,x1,y1,1,botH);
+  const [sx,sy]=view.t.apply(projection(capPt));
+  // la fiche reste entière : au-dessus si elle sortirait en bas, et décalée hors de la colonne des boutons de zoom
+  const right=W-$("zoombtns").getBoundingClientRect().width-22;
+  game.cardPos={above:sy+18>view.bottom&&sy-18-card.h>view.top, dx:Math.max(8+card.w/2-sx,Math.min(0,right-card.w/2-sx))};
+  redrawOverlay();
 }
 $("rfactsay").onclick=()=>say("Le savais-tu ? "+$("rfacttxt").textContent);
 
@@ -909,23 +925,30 @@ function drawGoose(ll,p,{hit=false,tag="",flip=false}={}){
   // zone pour attraper l'oie au doigt (plus grande que le dessin)
   if(hit) g.append("circle").attr("class","pin-hit").attr("cy",-22).attr("r",34);
 }
-function drawTarget(withLabel){
+// fiche affichée sur la carte après chaque réponse : drapeau + pays + capitale (+ ville / merveille), pour mémoriser
+function cardOf(q){
+  const lines=[...(q.type==="ville"?[`🏙️ ${q.city.nom}`]:q.type==="monument"?[monTitle(q.mon)]:[]),
+    q.type==="capitale"?`🏛️ ${q.c.cap}`:`${flag(q.c.a2)} ${q.c.nom}`,
+    q.type==="capitale"?`${flag(q.c.a2)} ${q.c.nom}`:`🏛️ ${q.c.cap}`];
+  const LH=24; return {lines,LH,h:lines.length*LH+10,w:Math.max(...lines.map(l=>[...l].length))*8.8+40};
+}
+function drawTarget(withLabel,ring){
   const q=game.list[game.i];
   const g=gOver.append("g").attr("class","mk").datum(game.target);
   g.append("circle").attr("class","ripple").attr("r",14).attr("fill","none").attr("stroke","#22b07d").attr("stroke-width",3);
+  if(ring||(withLabel&&tinyIso(q.c.iso))) g.append("circle").attr("class","tinyring").attr("r",16);
+  if(ring) return;
   g.append("circle").attr("r",9).attr("fill","#fff").attr("stroke","#22b07d").attr("stroke-width",3.5);
   g.append("circle").attr("r",4).attr("fill","#22b07d");
   if(!withLabel) return;
-  // étiquette : le nom à trouver ; en apprentissage, une fiche pour mémoriser (pays, drapeau, capitale)
-  const lines=game.learn
-    ? [...(q.type==="ville"||q.type==="monument"?[q.type==="ville"?`🏙️ ${q.city.nom}`:monTitle(q.mon)]:[]), `${flag(q.c.a2)} ${q.c.nom}`, `🏛️ ${q.c.cap}`]
-    : [q.type==="monument"?monTitle(q.mon):`${flag(q.c.a2)} ${placeName(q)}`];
-  // sous la cible : l'oie (qui monte au-dessus de son point) ne la cache jamais
-  const LH=24, hgt=lines.length*LH+10, tw=Math.max(...lines.map(l=>l.length))*8.6+40, top=18;
-  const L=g.append("g").attr("class","tlabel"+(game.learn?" learn":""));
-  L.append("rect").attr("x",-tw/2).attr("y",top).attr("width",tw).attr("height",hgt).attr("rx",16).attr("fill","#22b07d").attr("stroke","#fff").attr("stroke-width",2.5);
-  L.append("path").attr("d","M-7,19.5 L0,11 L7,19.5 Z").attr("fill","#22b07d");
-  lines.forEach((t,i)=>L.append("text").attr("y",top+5+LH*(i+1)-6).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",i===0?800:700).attr("font-size",i===0?17:15).attr("font-family","Baloo 2, sans-serif").text(t));
+  // sous la cible par défaut (l'oie, qui monte au-dessus de son point, ne la cache pas) ;
+  // au-dessus si elle sortirait de la zone visible, et décalée si elle déborde sur un côté
+  const {lines,LH,h,w}=cardOf(q), pos=game.cardPos||{above:false,dx:0};
+  const top=pos.above?-18-h:18, dx=pos.dx||0;
+  const L=g.append("g").attr("class","tlabel");
+  L.append("rect").attr("x",-w/2+dx).attr("y",top).attr("width",w).attr("height",h).attr("rx",16).attr("fill","#22b07d").attr("stroke","#fff").attr("stroke-width",2.5);
+  L.append("path").attr("d",pos.above?"M-7,-19.5 L0,-11 L7,-19.5 Z":"M-7,19.5 L0,11 L7,19.5 Z").attr("fill","#22b07d");
+  lines.forEach((t,i)=>L.append("text").attr("x",dx).attr("y",top+5+LH*(i+1)-6).attr("text-anchor","middle").attr("fill","#fff").attr("font-weight",i===0?800:700).attr("font-size",i===0?17:15).attr("font-family","Baloo 2, sans-serif").text(t));
 }
 
 function redrawOverlay(){
@@ -939,7 +962,10 @@ function redrawOverlay(){
     // atterrissage parfait : l'oie fait un salto
     game.recs.forEach((r,p)=>{ if(r.guess) drawGoose(r.guess,p,{tag:duo()?game.players[p].name:"",flip:game.results[p].perfect}); });
     gOver.selectAll(".pin-inner").style("animation","none");
-  } else if(game.quiz){ if(q.type==="ville"||q.type==="monument") drawTarget(false); }
+  } else if(game.quiz){
+    if(q.type==="ville"||q.type==="monument") drawTarget(false);
+    else if(tinyIso(q.c.iso)) drawTarget(false,true); // micro-État : anneau autour pour le repérer
+  }
   else if(game.guess) drawGoose(game.guess,game.turn,{hit:true});
   placeMarkers();
 }
@@ -1026,7 +1052,7 @@ function confetti(N){
 
 function goHome(){
   cancelAnimationFrame(timerRAF); try{speechSynthesis.cancel();}catch(e){}
-  game=null; endDrag(); updateHover(); redrawOverlay(); lands.classed("target",false);
+  game=null; endDrag(); updateHover(); redrawOverlay(); setTarget(null);
   $("result").classList.remove("show"); setGo("Valider 🎯",true,false); $("qopts").hidden=true;
   $("end").classList.add("hidden"); document.body.classList.remove("ingame","wiz");
   openTab("jouer");
