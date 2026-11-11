@@ -30,17 +30,18 @@ export const getEquip = () => get("geoose-oie", {});
 export const setEquip = e => put("geoose-oie", e);
 
 // ---------- statistiques (tableau de progrès) ----------
-export const getStats = () => Object.assign({ games: 0, days: {}, ok: {}, miss: {}, conf: {}, perfects: 0, merveilles: 0, bestRun: 0 }, get("geoose-stats", {}));
+export const getStats = () => Object.assign({ games: 0, days: {}, ok: {}, miss: {}, conf: {}, perfects: 0, merveilles: 0, iles: 0, bestRun: 0 }, get("geoose-stats", {}));
 export const saveStats = s => put("geoose-stats", s);
 export function addPlayTime(sec) { const s = getStats(), d = dayStr(); s.days[d] = (s.days[d] || 0) + Math.round(sec); s.games++; saveStats(s); }
 // une réponse du joueur 1 : réussite par mode, erreurs fréquentes, confusions entre pays
-export function recordAnswer({ type, key, ok, perfect, confused, merveille }) {
+export function recordAnswer({ type, key, ok, perfect, confused, merveille, ile }) {
   const s = getStats();
   const o = s.ok[type] || (s.ok[type] = [0, 0]); o[1]++; if (ok) o[0]++;
   if (!ok) s.miss[key] = (s.miss[key] || 0) + 1;
   if (confused) s.conf[confused] = (s.conf[confused] || 0) + 1;
   if (perfect) s.perfects++;
   if (ok && merveille) s.merveilles++;
+  if (ok && ile) s.iles = (s.iles || 0) + 1;
   saveStats(s);
   return s;
 }
@@ -76,6 +77,7 @@ export const MEDALS = [
   { id: "survie30", e: "💖", nom: "Indestructible", desc: "30 bonnes réponses en Survie" },
   { id: "quiz", e: "🧠", nom: "Je-sais-tout", desc: "10 sur 10 en Quiz" },
   { id: "merveilles", e: "🗿", nom: "Chasseur de merveilles", desc: "10 merveilles trouvées" },
+  { id: "robinson", e: "🏝️", nom: "Robinson", desc: "10 îles trouvées" },
   { id: "capitales", e: "🏛️", nom: "Roi des capitales", desc: "50 capitales au passeport" },
   { id: "globe", e: "🌍", nom: "Globe-trotteur", desc: "50 pays au passeport" },
   { id: "tour", e: "👑", nom: "Tour du monde", desc: "Les 197 pays au passeport" },

@@ -419,7 +419,14 @@ body.pmap .land{fill:var(--land-off)}
 #oielvl small{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-top:2px}
 .xpbar{display:inline-block;width:100%;max-width:220px;height:10px;border-radius:5px;background:var(--dot);overflow:hidden;vertical-align:middle}
 .xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--good),var(--gold));border-radius:5px}
-#oiegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
+#oiegrid{display:block}
+#oiegrid h4{margin:14px 2px 6px;font-size:17px}
+#oiegrid h4 small{color:var(--muted);font-size:13px}
+.slotname{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:10px 4px 5px}
+.oiegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.acc .mini{display:block;width:54px;height:60px;font-size:26px;line-height:60px}
+.acc .mini .goosesvg{width:100%;height:100%;overflow:visible}
+.gifts{margin-top:4px;color:var(--accent-d);font-weight:800;font-size:14px}
 .acc{border:0;background:var(--chip);border-radius:16px;padding:8px 4px 6px;font-family:inherit;font-weight:800;font-size:13px;line-height:1.1;color:var(--ink);box-shadow:0 3px 0 var(--chip-sh);display:flex;flex-direction:column;align-items:center;gap:2px}
 .acc .e{font-size:26px}
 .acc small{font-size:11px;font-weight:700;color:var(--muted)}
@@ -582,3 +589,125 @@ body:not(.ingame):not(.pmap) #zoombtns{display:none}
 .tgt{fill:var(--target);stroke:var(--target);stroke-width:calc(2px / var(--k,1));stroke-linejoin:round;pointer-events:none;animation:glow 1.2s ease-in-out infinite alternate}
 .tinyring{fill:none;stroke:var(--target);stroke-width:3.5;stroke-dasharray:6 5;animation:spinring 6s linear infinite;transform-box:fill-box;transform-origin:center}
 @keyframes spinring{to{transform:rotate(360deg)}}
+
+/* île : zone à atteindre (rayon de l'île) */
+.zone{fill:var(--target);fill-opacity:.28;stroke:var(--target);stroke-width:calc(2.5px / var(--k,1));stroke-dasharray:calc(6px / var(--k,1)) calc(5px / var(--k,1));pointer-events:none}
+/* assistant : 7 types sur 3 colonnes */
+.choices.bigch.three{grid-template-columns:repeat(3,1fr);gap:8px}
+.choices.bigch.three .choice{font-size:15px;padding:calc(9px * var(--u,1)) 3px calc(8px * var(--u,1))}
+.choices.bigch.three .choice .e{font-size:calc(32px * var(--u,1))}
+.choices.bigch.three .choice small{font-size:11px;line-height:1.15}
+/* réglages : 7 thèmes */
+#reglages #themes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#reglages #themes .choice{font-size:13px;padding:8px 2px}
+@media (max-width:420px){ #reglages #themes{grid-template-columns:repeat(3,1fr)} }
+
+/* =====================================================================
+   THÈME BONBON : rose guimauve, pastilles acidulées
+   ===================================================================== */
+:root[data-theme="bonbon"]{
+  --ink:#5a2a4a; --muted:#9a6a88; --accent:#ff5fa2; --accent-d:#d63c80; --accent-l:#ff8cc0;
+  --good:#3cc9a0; --good-d:#22957a; --good-l:#6fe0bf; --gold:#ffcf4a; --gold-d:#d9a521;
+  --glass:rgba(255,255,255,.86); --glass-sh:0 8px 24px rgba(180,60,130,.2),inset 0 1px 0 #fff;
+  --bg:radial-gradient(120% 90% at 50% 40%,#ffe0f1 0%,#f8b9de 55%,#e99acb 100%);
+  --screen-bg:linear-gradient(180deg,rgba(240,140,200,.5),rgba(255,255,255,.2) 50%,rgba(240,140,200,.55));
+  --l0:#fff3a8; --l1:#b9f2d8; --l2:#ffd0b8; --l3:#d8c8ff; --l4:#a8e6ff; --l5:#ffc2dc; --l6:#e8ffb0; --land-off:#fbe8f2;
+  --land-bd:#fff; --land-bw:1.3px; --coast:#d65aa8; --coast-op:.55; --coast-w:1px;
+  --halo:#ffeaf6; --halo-op:.95; --halo2:#ffd3ec; --halo2-op:.9; --grat:#fff; --grat-op:.3;
+  --olabel:#fff; --olabel-op:.85; --olabel-bd:#d65aa8;
+  --target:#3cc9a0; --target-2:#8ff0cf; --hover:#fff; --hover-op:.45;
+  --chip:#fff; --chip-on:#ffe3f1; --chip-sh:#f1c6dd; --tool:rgba(255,255,255,.94); --tool-sh:#ecbcd6;
+  --dot:#f2cde0; --tip:rgba(110,40,90,.82); --hint-bg:#fff2c2; --hint-ink:#a0700a; --hint-sh:#f0d68a;
+  --fact-bg:#fff4fa; --fact-ink:#7a3a62; --fact-b:#d63c80; --line2:#f5d3e5; --star-off:#f5d8e7; --star-off-sh:#e5b5cd;
+  --btn-sh:0 6px 0 #d63c80,0 12px 24px rgba(214,60,128,.35); --btn-g-sh:0 6px 0 #22957a,0 12px 24px rgba(34,149,122,.3);
+  --logo:#fff; --logo-sh:0 3px 0 #ff8cc0,0 6px 0 #d63c80,0 12px 20px rgba(150,30,100,.3);
+  --logo2:#fff3a8; --logo2-sh:0 3px 0 #ffcf4a,0 6px 0 #d9a521,0 12px 20px rgba(150,30,100,.3);
+  --big-sh:0 4px 0 #ffd0e6; --tag:#d63c80;
+  --b-new:linear-gradient(180deg,#a8e6ff,#5cc4f0); --b-new-sh:#3d9ac4; --b-rev:linear-gradient(180deg,#d8c8ff,#a88cf0); --b-rev-sh:#7d62c9;
+  --tabbar:rgba(255,245,251,.95);
+  --p-europe:#a8c8ff; --p-afrique:#ffc8a8; --p-asie:#ffb3d1; --p-ameriques:#a8f0d0; --p-oceanie:#d8c0ff;
+}
+/* =====================================================================
+   THÈME JUNGLE : fleuves turquoise, terres vertes, bois et toucans
+   ===================================================================== */
+:root[data-theme="jungle"]{
+  --ink:#1f3a1a; --muted:#4e6b3e; --accent:#ff8a2a; --accent-d:#c8601a; --accent-l:#ffab5c;
+  --good:#3c9a5f; --good-d:#2a7546; --good-l:#62bd80; --gold:#ffd23f; --gold-d:#c99a12;
+  --glass:rgba(240,250,225,.9); --glass-bd:1.5px solid #9cc47a; --glass-sh:0 8px 22px rgba(20,60,20,.25);
+  --bg:radial-gradient(120% 90% at 50% 40%,#46b6ad 0%,#26868c 55%,#145a66 100%);
+  --screen-bg:linear-gradient(180deg,rgba(20,90,60,.45),rgba(230,255,210,.15) 50%,rgba(20,90,60,.5));
+  --l0:#9ed36a; --l1:#7cc35a; --l2:#b6dd7a; --l3:#c9e58c; --l4:#8fcf6a; --l5:#a8d873; --l6:#d9e89a; --land-off:#cfe3b8;
+  --land-bd:rgba(40,80,20,.45); --land-bw:1px; --coast:#0f3d2a; --coast-op:.8; --coast-w:1.2px;
+  --halo:#8fe0cf; --halo-op:.5; --halo2:#5cc0b0; --halo2-op:.45; --grat:#d8f5c8; --grat-op:.16;
+  --olabel:#e8ffe0; --olabel-op:.8; --olabel-bd:#0f3d2a;
+  --target:#ffd23f; --target-2:#fff09a; --hover:#ff8a2a; --hover-op:.25;
+  --chip:#f6fbea; --chip-on:#ffe8cf; --chip-sh:#c3d9a6; --tool:#f6fbea; --tool-sh:#b9d29a;
+  --dot:#c9dcae; --tip:rgba(20,50,20,.85); --hint-bg:#fff2c2; --hint-ink:#8a5a00; --hint-sh:#e6cc80;
+  --fact-bg:#fff7dc; --fact-ink:#5a4200; --fact-b:#c8601a; --line2:#d3e5bb; --star-off:#dbe8c8; --star-off-sh:#b9cf9a;
+  --btn-sh:0 6px 0 #a34a10,0 12px 24px rgba(160,70,10,.3); --btn-g-sh:0 6px 0 #1f5a35,0 12px 24px rgba(30,90,50,.3);
+  --logo:#fff; --logo-sh:0 3px 0 #3c7a2a,0 6px 0 #2a5a1c,0 12px 20px rgba(0,40,10,.4);
+  --logo2:#ffd23f; --logo2-sh:0 3px 0 #c99a12,0 6px 0 #8a6a00,0 12px 20px rgba(0,40,10,.4);
+  --big-sh:0 4px 0 #ffd9b8; --tag:#a0612a;
+  --b-new:linear-gradient(180deg,#5fc7b8,#2a8f86); --b-new-sh:#1d6660; --b-rev:linear-gradient(180deg,#b88a5a,#8a5a2b); --b-rev-sh:#5a3a1a;
+  --tabbar:rgba(240,250,225,.96);
+  --p-europe:#7fb2ff; --p-afrique:#ffb36b; --p-asie:#ff8fa3; --p-ameriques:#ffe066; --p-oceanie:#c69cff;
+}
+[data-theme="jungle"] .wizstep h2,[data-theme="jungle"] .splashsub{color:#fff}
+/* =====================================================================
+   THÈME BANQUISE : mer polaire profonde, terres de glace, givre
+   ===================================================================== */
+:root[data-theme="banquise"]{
+  --ink:#16365c; --muted:#5a7699; --accent:#3aa0ff; --accent-d:#1f6fc4; --accent-l:#6dbaff;
+  --good:#22b07d; --good-d:#178a60; --good-l:#3fd09a; --gold:#ffc53d; --gold-d:#e09b0b;
+  --glass:rgba(240,248,255,.88); --glass-bd:1px solid rgba(255,255,255,.9); --glass-sh:0 8px 26px rgba(10,40,90,.3),inset 0 1px 0 #fff;
+  --bg:radial-gradient(120% 90% at 50% 35%,#3a82c6 0%,#1d4f8f 55%,#0f2f60 100%);
+  --screen-bg:linear-gradient(180deg,rgba(15,47,96,.55),rgba(220,240,255,.18) 50%,rgba(15,47,96,.6));
+  --l0:#f4fbff; --l1:#e6f3fb; --l2:#dcecf7; --l3:#eef6fc; --l4:#d2e6f4; --l5:#e9f4fb; --l6:#f8fcff; --land-off:#c9dbe9;
+  --land-bd:#9cc3df; --land-bw:1px; --coast:#8fd0ff; --coast-op:.95; --coast-w:1.3px;
+  --halo:#d6efff; --halo-op:.45; --halo2:#9fd2ff; --halo2-op:.25; --grat:#fff; --grat-op:.14;
+  --olabel:#e6f4ff; --olabel-op:.75; --olabel-bd:#0f2f60;
+  --target:#ff7aa8; --target-2:#ffb8d0; --hover:#3aa0ff; --hover-op:.18;
+  --chip:#fff; --chip-on:#e3f1ff; --chip-sh:#c6dbef; --tool:rgba(255,255,255,.94); --tool-sh:#bcd3ea;
+  --dot:#c6dbef; --tip:rgba(10,30,70,.85); --hint-bg:#e6f4ff; --hint-ink:#1f6fc4; --hint-sh:#b8d8f5;
+  --fact-bg:#eef7ff; --fact-ink:#1f4a7a; --fact-b:#1f6fc4; --line2:#d6e6f4; --star-off:#dbe8f4; --star-off-sh:#b6cce2;
+  --btn-sh:0 6px 0 #1f6fc4,0 12px 24px rgba(31,111,196,.35);
+  --logo:#fff; --logo-sh:0 3px 0 #8fd0ff,0 6px 0 #3a82c6,0 12px 20px rgba(0,20,60,.45);
+  --logo2:#c9ecff; --logo2-sh:0 3px 0 #6dbaff,0 6px 0 #1f6fc4,0 12px 20px rgba(0,20,60,.45);
+  --big-sh:0 4px 0 #cfe6ff; --tag:#1f6fc4;
+  --b-new:linear-gradient(180deg,#8fd0ff,#3a8fd6); --b-new-sh:#1f5fa0; --b-rev:linear-gradient(180deg,#b4b8ff,#7a80e6); --b-rev-sh:#555bbf;
+  --tabbar:rgba(240,248,255,.95);
+  --p-europe:#7fb2ff; --p-afrique:#ffb36b; --p-asie:#ff8fa3; --p-ameriques:#7be0b0; --p-oceanie:#c69cff;
+}
+/* =====================================================================
+   THÈME VOLCAN : roche sombre, côtes de lave, braises
+   ===================================================================== */
+:root[data-theme="volcan"]{
+  --ink:#ffeee2; --muted:#d2a58a; --accent:#ff5a1f; --accent-d:#a8320c; --accent-l:#ff8a4a;
+  --good:#7ed957; --good-d:#4f9a2e; --good-l:#a8f07f; --gold:#ffd84a; --gold-d:#c99a12;
+  --glass:rgba(40,22,18,.86); --glass-bd:1px solid rgba(255,120,60,.35);
+  --glass-sh:0 0 0 1px rgba(255,90,31,.12),0 10px 30px rgba(120,30,0,.5),inset 0 1px 0 rgba(255,255,255,.06);
+  --bg:radial-gradient(120% 90% at 50% 35%,#40211b 0%,#24110f 55%,#120706 100%);
+  --screen-bg:linear-gradient(180deg,rgba(18,7,6,.7),rgba(80,25,10,.4) 50%,rgba(18,7,6,.75));
+  --l0:#3a302c; --l1:#433630; --l2:#352b27; --l3:#4a3b33; --l4:#3d322d; --l5:#463831; --l6:#30282a; --land-off:#2c2422;
+  --land-bd:rgba(255,140,60,.32); --land-bw:.9px; --coast:#ff7a2a; --coast-op:.95; --coast-w:1.3px;
+  --halo:#ff5a1f; --halo-op:.3; --halo2:#ffb02e; --halo2-op:.14; --grat:#ff9a5a; --grat-op:.1;
+  --olabel:#ffb37a; --olabel-op:.55; --olabel-bd:#000;
+  --target:#ffd84a; --target-2:#fff2a8; --hover:#ff5a1f; --hover-op:.22;
+  --chip:rgba(255,255,255,.06); --chip-on:rgba(255,90,31,.2); --chip-sh:rgba(0,0,0,.5);
+  --tool:rgba(255,255,255,.07); --tool-sh:rgba(0,0,0,.5);
+  --dot:#5a3a2f; --tip:rgba(20,8,6,.9); --hint-bg:rgba(255,216,74,.14); --hint-ink:#ffd84a; --hint-sh:rgba(0,0,0,.4);
+  --fact-bg:rgba(255,200,80,.1); --fact-ink:#ffe1b0; --fact-b:#ffb02e; --line2:rgba(255,140,60,.2); --star-off:#4a332a; --star-off-sh:#2a1a14;
+  --btn-sh:0 5px 0 #7a2408,0 0 22px rgba(255,90,31,.55); --btn-g-sh:0 5px 0 #3a7a1e,0 0 20px rgba(126,217,87,.45);
+  --logo:#fff; --logo-sh:0 0 10px #ff7a2a,0 0 26px #ff3a0a,0 0 50px rgba(255,60,10,.6);
+  --logo2:#ffd84a; --logo2-sh:0 0 10px #ffb02e,0 0 28px rgba(255,160,40,.7);
+  --qname-sh:0 0 14px rgba(255,120,60,.55); --big-sh:0 0 18px rgba(255,90,31,.7); --tag:#a8320c;
+  --b-new:linear-gradient(180deg,#ff9a4a,#e0581a); --b-new-sh:#8a300a; --b-rev:linear-gradient(180deg,#b36bff,#7a32d6); --b-rev-sh:#4f1d99;
+  --tabbar:rgba(30,14,10,.95);
+  --p-europe:#4f86ff; --p-afrique:#ff8a4f; --p-asie:#ff4f9a; --p-ameriques:#7ed957; --p-oceanie:#b07cff;
+  color-scheme:dark;
+}
+[data-theme="volcan"] .btn.ghost{background:rgba(255,255,255,.08);color:var(--ink)}
+[data-theme="volcan"] .choice.on,[data-theme="volcan"] .ptab.on{box-shadow:0 0 0 2px var(--accent),0 0 16px rgba(255,90,31,.55)}
+[data-theme="volcan"] .choice,[data-theme="volcan"] .tool,[data-theme="volcan"] .name{border:1px solid rgba(255,140,60,.18)}
+[data-theme="volcan"] .line{stroke:#ffd84a}
+[data-theme="volcan"] .group h3{color:#c98a6a}

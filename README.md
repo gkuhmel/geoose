@@ -32,11 +32,12 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 - **🛂 Passeport** : un tampon par pays et par mode réussi, progression par continent, et une carte du monde des pays visités.
 - **🔊 Sons et 🗣️ voix** : cri d'oie à l'atterrissage parfait, ding, tampon… ; lecture des questions à voix haute en option (bouton Voix sur l'accueil, désactivée par défaut).
 - **💡 Le savais-tu ?** : une info amusante sur le pays après chaque réponse.
+- **🏝️ Îles** : 37 îles (Corse, Hawaï, Galápagos, île de Pâques…) ; il faut viser la zone de l'île.
 - **🗿 Merveilles** : monuments (tour Eiffel, Machu Picchu…) et animaux (kangourous, pandas…).
 - **Parties** : Calme · Chrono · ❤️ Survie (3 vies, de plus en plus dur) · 🔤 Quiz (le pays s'allume, on choisit parmi 4).
 - **🗓️ Défi du jour** : 5 questions identiques pour tout le monde, série de jours 🔥.
-- **🪿 Mon oie** : de l'XP à chaque partie, des niveaux, 10 accessoires à débloquer (casquette, lunettes, couronne, cape…).
+- **🪿 Mon oie** : de l'XP à chaque partie, des niveaux, 46 accessoires à débloquer (par niveau ou médaille) et 9 oies (une par continent complété au passeport, oie dorée, oie cosmique…).
 - **🏆 Progrès** : 24 médailles et un tableau de bord pour les parents (temps de jeu, réussite par mode, erreurs et confusions fréquentes).
-- **🎨 Thèmes** : Atlas (clair), Néon (nuit lumineuse), Vieille carte (parchemin) — bouton 🎨 sur l'accueil.
+- **🎨 Thèmes** : Atlas, Néon, Vieille carte, Bonbon, Jungle, Banquise, Volcan — bouton 🎨 sur l'accueil.
 - **App** : sur iPhone / iPad, Safari → Partager → « Sur l'écran d'accueil » : plein écran, icône oie, marche hors ligne.
 - Records stockés en `localStorage` par mode / niveau / chrono ; révisions dans `geoose-revisions`.

@@ -6,7 +6,8 @@ import { COUNTRIES, CONTINENTS } from "./countries.js";
 import { FACTS } from "./facts.js";
 import { CITIES } from "./cities.js";
 import { MONUMENTS } from "./monuments.js";
-import { PLUME, ACCESSORIES, SLOTS, gooseParts, gooseSVG } from "./goose.js";
+import { PLUMES, plumeOf, ACCESSORIES, SLOTS, gooseParts, gooseSVG, isUnlocked, unlockText } from "./goose.js";
+import { ISLANDS } from "./islands.js";
 import { dayStr, seededRng, levelInfo, addXp, getEquip, setEquip, getStats, addPlayTime, recordAnswer, getDefi, currentStreak, defiDoneToday, finishDefi, MEDALS, getMedals, award } from "./progress.js";
 import { sfx, say, unlock, soundOn, setSound, voiceOn, setVoice } from "./audio.js";
 import "./style.css";
@@ -263,28 +264,33 @@ try{ const n=JSON.parse(store.get(NAMES_KEY)||"null")||["Nils","Papa"]; $("name1
 
 // ---------- questions ----------
 // types : pays, capitale, drapeau, ville (grandes villes), monument (merveilles : monuments, sites, animaux)
-const TYPES=["pays","capitale","drapeau","ville","monument"];
+const TYPES=["pays","capitale","drapeau","ville","monument","ile"];
 const cityById=new Map(CITIES.map(v=>[v.id,v]));
 const monById=new Map(MONUMENTS.map(m=>[m.id,m]));
+const islById=new Map(ISLANDS.map(i=>[i.id,i]));
 const cap1=s=>s[0].toUpperCase()+s.slice(1);
 const monTitle=m=>`${m.e} ${cap1(m.nom)}`;
 // nom à trouver / point cible / clé (révisions, doublons) d'une question
-const placeName=q=>q.type==="ville"?q.city.nom:q.type==="monument"?monTitle(q.mon):q.type==="capitale"?q.c.cap:q.c.nom;
-const targetOf=q=>q.city?[q.city.lon,q.city.lat]:q.mon?[q.mon.lon,q.mon.lat]:[q.c.lon,q.c.lat];
-const revKey=q=>q.type==="ville"?`ville|${q.city.id}`:q.type==="monument"?`monument|${q.mon.id}`:`${q.type}|${q.c.iso}`;
-const qKey=q=>q.city?q.city.id:q.mon?q.mon.id:q.c.iso;
+const islTitle=i=>`${i.e} ${cap1(i.nom)}`;
+const placeName=q=>q.type==="ville"?q.city.nom:q.type==="monument"?monTitle(q.mon):q.type==="ile"?islTitle(q.isl):q.type==="capitale"?q.c.cap:q.c.nom;
+const targetOf=q=>q.city?[q.city.lon,q.city.lat]:q.mon?[q.mon.lon,q.mon.lat]:q.isl?[q.isl.lon,q.isl.lat]:[q.c.lon,q.c.lat];
+// île : zone (cercle du rayon de l'île) à atteindre
+const zoneOf=q=>d3.geoCircle().center([q.isl.lon,q.isl.lat]).radius(q.isl.r/111.2)();
+const revKey=q=>q.type==="ville"?`ville|${q.city.id}`:q.type==="monument"?`monument|${q.mon.id}`:q.type==="ile"?`ile|${q.isl.id}`:`${q.type}|${q.c.iso}`;
+const qKey=q=>q.city?q.city.id:q.mon?q.mon.id:q.isl?q.isl.id:q.c.iso;
 const shuffle=(a,rnd=Math.random)=>{for(let i=a.length-1;i>0;i--){const j=rnd()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const byKey=new Map(C.map(c=>[c.iso,c]));
 const nomAvecArticle=c=>c.art==="l'"?"l'"+c.nom:c.art?c.art+" "+c.nom:c.nom;
 // pays sans voisin terrestre (médaille « Île au trésor »)
-const ISLANDS=new Set();
-{ const m=new Map(); features.forEach((f,j)=>{ if(f.id!==undefined) m.set(f.id,(m.get(f.id)??true)&&nb[j].length===0); }); m.forEach((v,k)=>v&&ISLANDS.add(k)); }
+const ISLE_COUNTRIES=new Set();
+{ const m=new Map(); features.forEach((f,j)=>{ if(f.id!==undefined) m.set(f.id,(m.get(f.id)??true)&&nb[j].length===0); }); m.forEach((v,k)=>v&&ISLE_COUNTRIES.add(k)); }
 
 // toutes les questions possibles d'un type, d'une renommée et d'un continent (difficulté = renommée, 1 célèbre … 4 rareté)
 function candidates(types,lv,cont){
   const inCont=c=>c&&(cont==="monde"||c.cont===cont), out=[];
   for(const t of types){
     if(t==="ville") CITIES.forEach(v=>{ const c=byKey.get(v.iso); if(v.tier===lv&&inCont(c)) out.push({c,type:t,city:v}); });
+    else if(t==="ile") ISLANDS.forEach(i=>{ const c=byKey.get(i.iso); if(i.tier===lv&&inCont(c)) out.push({c,type:t,isl:i}); });
     else if(t==="monument") MONUMENTS.forEach(m=>{ const c=byKey.get(m.iso); if(m.tier===lv&&inCont(c)) out.push({c,type:t,mon:m}); });
     else C.forEach(c=>{ if(inCont(c)&&c.tier[t]===lv) out.push({c,type:t}); });
   }
@@ -303,7 +309,7 @@ function pickQuestions(mode,level,cont,n=ROUNDS,used=new Set()){
 // défi du jour : 5 questions (une par type), les mêmes pour tout le monde le même jour
 function defiQuestions(){
   const rnd=seededRng("geoose-defi-"+dayStr()), out=[], used=new Set();
-  const plan=shuffle(["pays","capitale","drapeau","ville","monument"],rnd);
+  const plan=shuffle([...TYPES],rnd).slice(0,5);
   for(const t of plan){
     const lv=1+Math.floor(rnd()*3);
     let cands=candidates([t],lv,"monde"); if(!cands.length) cands=candidates([t],1,"monde");
@@ -322,6 +328,7 @@ function qFromKey(k){
   const i=k.indexOf("|"), type=k.slice(0,i), rest=k.slice(i+1);
   if(type==="ville"){ const city=cityById.get(rest); return {c:city&&byKey.get(city.iso),type,city}; }
   if(type==="monument"){ const mon=monById.get(rest); return {c:mon&&byKey.get(mon.iso),type,mon}; }
+  if(type==="ile"){ const isl=islById.get(rest); return {c:isl&&byKey.get(isl.iso),type,isl}; }
   return {c:byKey.get(rest),type};
 }
 const revItems=()=>[...revisions].map(qFromKey).filter(q=>q.c&&TYPES.includes(q.type));
@@ -408,7 +415,7 @@ function showVoice(){ document.querySelectorAll(".voice").forEach(b=>{ b.firstCh
 document.querySelectorAll(".voice").forEach(b=>b.addEventListener("click",()=>{ setVoice(!voiceOn()); unlock(); showVoice(); if(voiceOn()) say("Je lirai les questions."); }));
 showVoice();
 // thèmes : Atlas (clair), Néon (nuit lumineuse), Vieille carte (parchemin)
-const THEMES=[["atlas","Atlas","#5fb3e0"],["neon","Néon","#0e1238"],["carte","Vieille carte","#c9d1ae"]];
+const THEMES=[["atlas","Atlas","#5fb3e0"],["neon","Néon","#0e1238"],["carte","Vieille carte","#c9d1ae"],["bonbon","Bonbon","#f6b3dc"],["jungle","Jungle","#227f86"],["banquise","Banquise","#1d4f8f"],["volcan","Volcan","#24110f"]];
 function applyTheme(id){
   const t=THEMES.find(x=>x[0]===id)||THEMES[0];
   if(t[0]==="atlas") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=t[0];
@@ -463,27 +470,43 @@ function renderLevel(){
   $("brandgoose").innerHTML=gooseSVG(equip,"idle");
   if($("splashgoose")) $("splashgoose").innerHTML=gooseSVG(equip,"");
 }
+const unlockCtx=()=>({lvl:levelInfo().lvl,medals:getMedals()});
 function renderOie(){
-  const L=levelInfo();
+  const L=levelInfo(), ctx=unlockCtx(), cur=equip.plume||"blanche";
   $("oiepreview").innerHTML=gooseSVG(equip,"idle");
   $("oielvl").innerHTML=`<b>Niveau ${L.lvl}</b><span class="xpbar"><i style="width:${Math.round(100*L.cur/L.need)}%"></i></span><small>${L.cur} / ${L.need} XP pour le niveau ${L.lvl+1}</small>`;
-  $("oiegrid").innerHTML=ACCESSORIES.map(a=>{
-    const open=L.lvl>=a.lvl, on=equip[a.slot]===a.id;
-    return `<button class="acc${open?"":" locked"}${on?" on":""}" data-id="${a.id}"><span class="e">${open?a.e:"🔒"}</span>${a.nom}<small>${open?(on?"porté ✓":SLOTS[a.slot]):`niveau ${a.lvl}`}</small></button>`;
-  }).join("");
+  const nAcc=ACCESSORIES.filter(a=>isUnlocked(a.unlock,ctx)).length, nPl=PLUMES.filter(p=>isUnlocked(p.unlock,ctx)).length;
+  let h=`<h4>🪿 Plumages <small>${nPl} / ${PLUMES.length}</small></h4><div class="oiegrid plumes">`+PLUMES.map(p=>{
+    const open=isUnlocked(p.unlock,ctx), on=cur===p.id;
+    return `<button class="acc${open?"":" locked"}${on?" on":""}" data-plume="${p.id}"><span class="mini">${open?gooseSVG({plume:p.id}):"🔒"}</span>${p.nom}<small>${open?(on?"choisie ✓":p.e):unlockText(p.unlock)}</small></button>`;
+  }).join("")+`</div><h4>🎁 Accessoires <small>${nAcc} / ${ACCESSORIES.length}</small></h4>`;
+  for(const [slot,lab] of Object.entries(SLOTS)){
+    h+=`<div class="slotname">${lab}</div><div class="oiegrid">`+ACCESSORIES.filter(a=>a.slot===slot).map(a=>{
+      const open=isUnlocked(a.unlock,ctx), on=equip[a.slot]===a.id;
+      return `<button class="acc${open?"":" locked"}${on?" on":""}" data-id="${a.id}"><span class="e">${open?a.e:"🔒"}</span>${a.nom}<small>${open?(on?"porté ✓":"&nbsp;"):unlockText(a.unlock)}</small></button>`;
+    }).join("")+"</div>";
+  }
+  $("oiegrid").innerHTML=h;
 }
 $("oiegrid").addEventListener("click",e=>{
   const b=e.target.closest(".acc"); if(!b) return;
-  const a=ACCESSORIES.find(x=>x.id===b.dataset.id);
-  if(levelInfo().lvl<a.lvl){ toast(`🔒 Niveau ${a.lvl} pour débloquer !`); return; }
-  if(equip[a.slot]===a.id) delete equip[a.slot]; else equip[a.slot]=a.id;
+  const ctx=unlockCtx();
+  if(b.dataset.plume){
+    const p=PLUMES.find(x=>x.id===b.dataset.plume);
+    if(!isUnlocked(p.unlock,ctx)){ toast(`🔒 ${cap1(unlockText(p.unlock).replace("🏅 ",""))}`); return; }
+    equip.plume=p.id;
+  } else {
+    const a=ACCESSORIES.find(x=>x.id===b.dataset.id);
+    if(!isUnlocked(a.unlock,ctx)){ toast(`🔒 ${cap1(unlockText(a.unlock).replace("🏅 ",""))}`); return; }
+    if(equip[a.slot]===a.id) delete equip[a.slot]; else equip[a.slot]=a.id;
+  }
   setEquip(equip); sfx.plop(); renderOie(); renderLevel();
 });
 $("oieclose").onclick=()=>openTab("jouer");
 
 // ---------- progrès : médailles + tableau pour les parents ----------
 let progTab="medailles";
-function keyLabel(k){ const q=qFromKey(k); return q.c?`${q.type==="monument"?"":flag(q.c.a2)+" "}${placeName(q)} <small>(${({pays:"pays",capitale:"capitale",drapeau:"drapeau",ville:"ville",monument:"merveille"})[q.type]})</small>`:null; }
+function keyLabel(k){ const q=qFromKey(k); return q.c?`${q.type==="monument"||q.type==="ile"?"":flag(q.c.a2)+" "}${placeName(q)} <small>(${({pays:"pays",capitale:"capitale",drapeau:"drapeau",ville:"ville",monument:"merveille",ile:"île"})[q.type]})</small>`:null; }
 function renderProgres(){
   document.querySelectorAll("#progtabs .ptab").forEach(b=>b.classList.toggle("on",b.dataset.k===progTab));
   const got=getMedals();
@@ -501,7 +524,7 @@ function renderProgres(){
     return `<div class="srow"><span>${v.e} ${v.nom}</span><span class="sbar"><i style="width:${Math.round(100*n/all.length)}%;background:${PASTEL[k]}"></i></span><b>${n}/${all.length}</b></div>`;
   }).join("");
   const modes=TYPES.filter(t=>s.ok[t]).map(t=>{ const [a,b]=s.ok[t];
-    return `<div class="srow"><span>${({pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles"})[t]}</span><span class="sbar"><i style="width:${Math.round(100*a/b)}%"></i></span><b>${Math.round(100*a/b)} %</b></div>`; }).join("")||`<p class="muted">Pas encore de partie.</p>`;
+    return `<div class="srow"><span>${({pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles",ile:"🏝️ Îles"})[t]}</span><span class="sbar"><i style="width:${Math.round(100*a/b)}%"></i></span><b>${Math.round(100*a/b)} %</b></div>`; }).join("")||`<p class="muted">Pas encore de partie.</p>`;
   const misses=Object.entries(s.miss).sort((a,b)=>b[1]-a[1]).map(([k,n])=>[keyLabel(k),n]).filter(x=>x[0]).slice(0,6)
     .map(([l,n])=>`<li>${l} <b>${n}×</b></li>`).join("")||`<li class="muted">Rien à signaler 👏</li>`;
   const confs=Object.entries(s.conf).sort((a,b)=>b[1]-a[1]).map(([k,n])=>{ const [x,y]=k.split(">").map(i=>byKey.get(i)); return x&&y?`<li>${flag(x.a2)} ${x.nom} ↔ ${flag(y.a2)} ${y.nom} <b>${n}×</b></li>`:""; }).filter(Boolean).slice(0,4).join("")||`<li class="muted">Aucune pour l'instant</li>`;
@@ -523,7 +546,7 @@ $("progclose").onclick=()=>openTab("jouer");
 // ---------- accueil ----------
 const special=()=>opts.chrono>=2; // survie et quiz : solo
 const bestKey=()=>`geoose4-${opts.mode}-${opts.level}-${opts.chrono}-${opts.cont}`;
-const LBL={mode:{pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles",mix:"🎲 Mélange"},
+const LBL={mode:{pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles",ile:"🏝️ Îles",mix:"🎲 Mélange"},
   level:["","Facile","Moyen","Difficile","Expert"],chrono:["Calme","Chrono","Survie","Quiz"]};
 const optsSummary=()=>`${LBL.mode[opts.mode]} · ${CONTINENTS[opts.cont].nom} · ${LBL.level[opts.level]} · ${LBL.chrono[opts.chrono]}${opts.players>1&&!special()?" · à deux":""}`;
 function showBest(){
@@ -628,7 +651,7 @@ function nextRound(){
   startTurn();
 }
 
-const QLABEL={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?",ville:"Où se trouve la ville…",monument:"Où se trouve…"};
+const QLABEL={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?",ville:"Où se trouve la ville…",monument:"Où se trouve…",ile:"Où se trouve l'île…"};
 // un tour = un joueur pose son oie (à deux : même question pour les deux, réponse révélée après le 2e)
 function startTurn(){
   const q=game.list[game.i];
@@ -657,7 +680,7 @@ function startTurn(){
 function speakQuestion(prefix=""){
   if(!game) return;
   const q=game.list[game.i];
-  say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="drapeau"?"À quel pays est ce drapeau ?":q.type==="monument"?`${q.mon.kind==="a"?"Où vivent":"Où se trouve"} ${q.mon.nom} ?`:`Où se trouve ${placeName(q)} ?`));
+  say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="drapeau"?"À quel pays est ce drapeau ?":q.type==="monument"?`${q.mon.kind==="a"?"Où vivent":"Où se trouve"} ${q.mon.nom} ?`:q.type==="ile"?`Où se trouve ${q.isl.nom} ?`:`Où se trouve ${placeName(q)} ?`));
 }
 $("qname").addEventListener("click",()=>{ if(voiceOn()&&!game?.quiz) speakQuestion(); });
 function setGo(txt,disabled,green){const b=$("go");b.textContent=txt;b.disabled=disabled;b.classList.toggle("green",green);}
@@ -672,7 +695,7 @@ function toast(txt){ const t=$("toast"); t.textContent=txt; t.classList.remove("
 // ---------- quiz (mode inversé) : la réponse est montrée sur la carte, on choisit parmi 4 ----------
 const optLabel=q=>q.type==="drapeau"?flag(q.c.a2):placeName(q);
 function startQuiz(q){
-  $("qlabel").textContent={pays:"Quel est ce pays ?",capitale:`Quelle est la capitale de ce pays ?`,drapeau:"Quel est le drapeau de ce pays ?",ville:"Quelle est cette ville ?",monument:q.mon?.kind==="a"?"Quel animal vit ici ?":"Qu'y a-t-il ici ?"}[q.type];
+  $("qlabel").textContent={pays:"Quel est ce pays ?",capitale:`Quelle est la capitale de ce pays ?`,drapeau:"Quel est le drapeau de ce pays ?",ville:"Quelle est cette ville ?",monument:q.mon?.kind==="a"?"Quel animal vit ici ?":"Qu'y a-t-il ici ?",ile:"Quelle est cette île ?"}[q.type];
   $("qname").textContent=q.type==="capitale"?`${flag(q.c.a2)} ${q.c.nom}`:"";
   $("qname").classList.remove("flagq");
   $("hintbtn").hidden=true; $("tip").style.opacity=0;
@@ -680,7 +703,7 @@ function startQuiz(q){
   const good=optLabel(q), seen=new Set([good]), opts4=[q];
   const pools=[[q.c.cont,1],[q.c.cont,4],["monde",4]];
   for(const [cont,spread] of pools){
-    const tier=q.mon?q.mon.tier:q.city?q.city.tier:q.c.tier[q.type];
+    const tier=q.mon?q.mon.tier:q.city?q.city.tier:q.isl?q.isl.tier:q.c.tier[q.type];
     const cands=shuffle([1,2,3,4].filter(l=>Math.abs(l-tier)<=spread).flatMap(l=>candidates([q.type],l,cont)));
     for(const x of cands){ if(opts4.length>=4) break; const l=optLabel(x); if(!seen.has(l)){ seen.add(l); opts4.push(x); } }
     if(opts4.length>=4) break;
@@ -689,14 +712,14 @@ function startQuiz(q){
   $("qopts").innerHTML=game.qopts.map((l,i)=>`<button class="qopt${q.type==="drapeau"?" fl":""}" data-i="${i}">${esc(l)}</button>`).join("");
   $("qopts").classList.toggle("flags",q.type==="drapeau");
   setGo("Choisis une réponse",true,false);
-  setTarget(q.c.iso);
+  setTarget(q.type==="ile"?null:q.c.iso);
   game.target=targetOf(q);
   redrawOverlay();
   frameBox(...quizBox(q),1,undefined,12);
 }
 // cadrage du quiz : le pays au centre, occupant ~40 % de la zone visible (assez dézoomé pour voir les voisins)
 function quizBox(q){
-  const f=byIso.get(q.c.iso), pb=path.bounds({type:"MultiPoint",coordinates:[targetOf(q)]}), fb=f?path.bounds(f):pb;
+  const f=byIso.get(q.c.iso), pb=path.bounds({type:"MultiPoint",coordinates:[targetOf(q)]}), fb=q.isl?path.bounds(zoneOf(q)):f?path.bounds(f):pb;
   let [[x0,y0],[x1,y1]]=fb; if(x1-x0>W*0.9){[[x0,y0],[x1,y1]]=pb;}
   const cx=(x0+x1)/2, cy=(y0+y1)/2, hw=Math.max(6,(x1-x0)*1.25), hh=Math.max(6,(y1-y0)*1.25);
   return [cx-hw,cy-hh,cx+hw,cy+hh];
@@ -734,7 +757,7 @@ function startTimer(){
   tick();
 }
 
-$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?`drapeau ${de(c)}${c.nom}`:q.type==="ville"?`ville située ${dans(c)}${c.nom}`:q.type==="monument"?`${dans(c)}${c.nom}`:`capitale ${de(c)}${c.nom}`;};
+$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?`drapeau ${de(c)}${c.nom}`:q.type==="ville"?`ville située ${dans(c)}${c.nom}`:q.type==="monument"?`${dans(c)}${c.nom}`:q.type==="ile"?`elle appartient à ${nomAvecArticle(c)}`:`capitale ${de(c)}${c.nom}`;};
 
 function placeGuess(cx,cy){
   if(!canPlay()) return;
@@ -788,7 +811,9 @@ function scoreRec(rec,q){
   const dT=Math.round(d3.geoDistance(rec.guess,tgt)*R);
   const distC=()=>fs.length?Math.round(Math.min(...fs.map(f=>distToFeature(f,rec.guess)))*R):dT;
   let km, good=false, perfect=false;
-  if(q.type==="capitale"||q.type==="ville"||q.type==="monument"){
+  if(q.type==="ile"){ // dans le rayon de l'île = tous les points ; « pile dessus » près du centre
+    km=Math.max(0,dT-q.isl.r); good=km===0; perfect=dT<=Math.max(25,q.isl.r*.3);
+  } else if(q.type==="capitale"||q.type==="ville"||q.type==="monument"){
     good=dT<=50||fs.some(f=>d3.geoContains(f,rec.guess));
     km=good?0:distC();
     perfect=dT<=50;
@@ -801,8 +826,13 @@ function scoreRec(rec,q){
 const verdict=r=>r.quiz?(r.correct?"✅ Bravo !":"❌ Raté !"):r.km===null?"⏰ Temps écoulé !":r.perfect?"🪿 Atterrissage parfait !":r.good?"✅ Bon pays !":r.pts>=850?"😮 Presque !":r.pts>=650?"🔥 Super !":r.pts>=400?"👍 Pas mal !":r.pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
 
 // médailles : annoncées une par une (toast + son), gardées pour l'écran de fin
+const giftsOf=m=>[...PLUMES,...ACCESSORIES].filter(x=>x.unlock?.medal===m.id);
 function celebrate(list){
-  list.forEach((m,i)=>{ game.medals.push(m); setTimeout(()=>{ toast(`🏅 ${m.e} ${m.nom} !`); sfx.stamp(); },1100+i*1700); });
+  let k=0;
+  list.forEach(m=>{ game.medals.push(m);
+    setTimeout(()=>{ toast(`🏅 ${m.e} ${m.nom} !`); sfx.stamp(); },1100+k++*1700);
+    giftsOf(m).forEach(g=>setTimeout(()=>{ toast(`🎁 Nouveau pour ton oie : ${g.e} ${g.nom}`); sfx.good(); },1100+k++*1700));
+  });
 }
 function passportMedals(){
   const ids=[], n=C.filter(stamped).length;
@@ -821,7 +851,7 @@ function reveal(){
 
   // révisions + passeport + stats + médailles : pour le 1er joueur (Nils)
   // réussi : pays/drapeau à ≤ OK_KM de la frontière ; capitale/ville/merveille dans le bon pays ; quiz juste ; jamais avec l'indice
-  const r0=res[0], pointQ=q.type==="capitale"||q.type==="ville"||q.type==="monument";
+  const r0=res[0], pointQ=q.type==="capitale"||q.type==="ville"||q.type==="monument"||q.type==="ile";
   const ok=r0.quiz?r0.correct:r0.km!==null&&!r0.hint&&(pointQ?r0.good:r0.km<=OK_KM), rk=revKey(q);
   let revMsg="", stampMsg="";
   if(ok){
@@ -834,22 +864,23 @@ function reveal(){
   saveRev();
   // statistiques : confusion = l'oie est tombée dans un autre pays (modes pays / drapeau)
   const g0=game.recs[0]?.guess, other=!ok&&g0&&(q.type==="pays"||q.type==="drapeau")?countryAt(g0):null;
-  const stats=recordAnswer({type:q.type,key:rk,ok,perfect:r0.perfect,confused:other&&other!==c.iso&&byKey.has(other)?`${c.iso}>${other}`:null,merveille:q.type==="monument"});
+  const stats=recordAnswer({type:q.type,key:rk,ok,perfect:r0.perfect,confused:other&&other!==c.iso&&byKey.has(other)?`${c.iso}>${other}`:null,merveille:q.type==="monument",ile:q.type==="ile"});
   if(ok){ game.run++; game.okCount++; } else game.run=0;
   const ids=[];
   if(r0.perfect) ids.push("pile");
-  if(r0.perfect&&ISLANDS.has(c.iso)) ids.push("ile");
+  if(r0.perfect&&ISLE_COUNTRIES.has(c.iso)) ids.push("ile");
   if(game.run>=5) ids.push("feu"); if(game.run>=10) ids.push("inarretable");
   if(stats.merveilles>=10) ids.push("merveilles");
+  if(stats.iles>=10) ids.push("robinson");
   if(game.survie&&game.okCount>=15) ids.push("survie15"); if(game.survie&&game.okCount>=30) ids.push("survie30");
   if(ok) ids.push(...passportMedals());
   celebrate(award(ids));
   // survie : une vie en moins à chaque erreur
   if(game.survie&&!ok){ game.lives--; $("dots").textContent=hearts(); $("dots").classList.remove("hurt"); void $("dots").offsetWidth; $("dots").classList.add("hurt"); }
 
-  setTarget(c.iso); updateHover();
+  setTarget(q.type==="ile"?null:c.iso); updateHover();
   if(!game.survie) [...$("dots").children][game.i].className="done";
-  $("rflag").textContent=q.type==="monument"?q.mon.e:flag(c.a2);
+  $("rflag").textContent=q.type==="monument"?q.mon.e:q.type==="ile"?q.isl.e:flag(c.a2);
   const where=`${dans(c)}${c.nom}`;
   const what=q.type==="capitale"?`${c.cap}, capitale ${de(c)}${c.nom}`:pointQ?`${name}, ${where}`:`${c.nom} · capitale : ${c.cap}`;
   if(!duo()){
@@ -861,6 +892,7 @@ function reveal(){
     $("rdetail").textContent = r.quiz ? (r.correct?`C'est bien ${whatArt} !`:`C'était ${whatArt}`)
       : r.km===null ? `C'était ici : ${what}`
       : !pointQ ? (r.km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(r.km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
+      : q.type==="ile" ? (r.perfect?`Tu as trouvé ${what} !`:r.good?`Ton oie est bien sur l'île 👍 ${name} ${dans(c)}${c.nom}`:`${name} est ${where} : ton oie est à ${fmt(r.km)} km de l'île`)
       : r.perfect ? `Tu as trouvé ${what} !`
       : r.good ? `Ton oie est bien ${where} 👍 ${name} est à ${fmt(r.dT)} km`
       : `${name} : ${where}, ton oie est à ${fmt(r.km)} km de la frontière`;
@@ -872,8 +904,9 @@ function reveal(){
     $("rdetail").textContent=what;
   }
   $("rstamp").innerHTML=stampMsg?stampSVG(c):"";
-  $("rfacttxt").textContent=FACTS[c.a2]||"";
-  $("rfact").hidden=!FACTS[c.a2];
+  const fact=q.isl?q.isl.fact:FACTS[c.a2];
+  $("rfacttxt").textContent=fact||"";
+  $("rfact").hidden=!fact;
   $("result").classList.add("show");
   setScore();
   const last=game.survie?game.lives<=0:game.i+1>=game.n;
@@ -888,7 +921,7 @@ function reveal(){
 
   // cadrage sur les oies + la cible
   const pts2=[capPt,...game.recs.filter(r=>r.guess).map(r=>r.guess)];
-  const pb=path.bounds({type:"MultiPoint",coordinates:pts2}), fb=f?path.bounds(f):pb;
+  const pb=path.bounds({type:"MultiPoint",coordinates:pts2}), fb=q.isl?path.bounds(zoneOf(q)):f?path.bounds(f):pb;
   let x0=Math.min(pb[0][0],fb[0][0]),y0=Math.min(pb[0][1],fb[0][1]),x1=Math.max(pb[1][0],fb[1][0]),y1=Math.max(pb[1][1],fb[1][1]);
   if(x1-x0>W*0.7){[[x0,y0],[x1,y1]]=pb;}
   // on garde sous la cible la place de sa fiche, puis on la place pour qu'elle reste entière à l'écran
@@ -916,7 +949,7 @@ function drawGoose(ll,p,{hit=false,tag="",flip=false}={}){
   g.append("ellipse").attr("class","shadow").attr("rx",14).attr("ry",4.5);
   g.append("path").attr("class","trail").attr("d","M0,-4V-26");
   g.append("g").attr("class","fly").append("g").attr("class","pin-inner").attr("data-id",game.pinId)
-    .html(gooseParts(PLUME[p]||PLUME[0],p===0?equip:{}));
+    .html(gooseParts(p===0?plumeOf(equip.plume):PLUMES[equip.plume==="cendree"?0:1],p===0?equip:{}));
   if(tag){
     const w=tag.length*7.6+18, T=g.append("g").attr("class","ptag");
     T.append("rect").attr("x",-w/2).attr("y",-72).attr("width",w).attr("height",20).attr("rx",10).attr("fill",PCOL[p]).attr("stroke","#fff").attr("stroke-width",2);
@@ -927,7 +960,7 @@ function drawGoose(ll,p,{hit=false,tag="",flip=false}={}){
 }
 // fiche affichée sur la carte après chaque réponse : drapeau + pays + capitale (+ ville / merveille), pour mémoriser
 function cardOf(q){
-  const lines=[...(q.type==="ville"?[`🏙️ ${q.city.nom}`]:q.type==="monument"?[monTitle(q.mon)]:[]),
+  const lines=q.type==="ile"?[islTitle(q.isl),`${flag(q.c.a2)} ${q.c.nom}`]:[...(q.type==="ville"?[`🏙️ ${q.city.nom}`]:q.type==="monument"?[monTitle(q.mon)]:[]),
     q.type==="capitale"?`🏛️ ${q.c.cap}`:`${flag(q.c.a2)} ${q.c.nom}`,
     q.type==="capitale"?`${flag(q.c.a2)} ${q.c.nom}`:`🏛️ ${q.c.cap}`];
   const LH=24; return {lines,LH,h:lines.length*LH+10,w:Math.max(...lines.map(l=>[...l].length))*8.8+40};
@@ -936,7 +969,7 @@ function drawTarget(withLabel,ring){
   const q=game.list[game.i];
   const g=gOver.append("g").attr("class","mk").datum(game.target);
   g.append("circle").attr("class","ripple").attr("r",14).attr("fill","none").attr("stroke","#22b07d").attr("stroke-width",3);
-  if(ring||(withLabel&&tinyIso(q.c.iso))) g.append("circle").attr("class","tinyring").attr("r",16);
+  if(ring||(withLabel&&q.type!=="ile"&&tinyIso(q.c.iso))) g.append("circle").attr("class","tinyring").attr("r",16);
   if(ring) return;
   g.append("circle").attr("r",9).attr("fill","#fff").attr("stroke","#22b07d").attr("stroke-width",3.5);
   g.append("circle").attr("r",4).attr("fill","#22b07d");
@@ -958,12 +991,14 @@ function redrawOverlay(){
   if(game.answered){
     game.recs.forEach((r,p)=>{ const rr=game.results[p];
       if(r.guess&&!rr.perfect&&(rr.km>0||rr.dT>50)) gOver.append("path").attr("class","line").style("stroke",duo()?PCOL[p]:null).attr("d",path({type:"LineString",coordinates:[r.guess,game.target]})); });
+    if(q.type==="ile") gOver.insert("path",":first-child").attr("class","zone").attr("d",path(zoneOf(q)));
     drawTarget(true);
     // atterrissage parfait : l'oie fait un salto
     game.recs.forEach((r,p)=>{ if(r.guess) drawGoose(r.guess,p,{tag:duo()?game.players[p].name:"",flip:game.results[p].perfect}); });
     gOver.selectAll(".pin-inner").style("animation","none");
   } else if(game.quiz){
-    if(q.type==="ville"||q.type==="monument") drawTarget(false);
+    if(q.type==="ile") gOver.append("path").attr("class","zone").attr("d",path(zoneOf(q)));
+    if(q.type==="ville"||q.type==="monument"||q.type==="ile") drawTarget(false);
     else if(tinyIso(q.c.iso)) drawTarget(false,true); // micro-État : anneau autour pour le repérer
   }
   else if(game.guess) drawGoose(game.guess,game.turn,{hit:true});
@@ -1021,11 +1056,12 @@ function endGame(){
   const xp=Math.round(P[0].total/100)+(game.defi?40:0)+game.medals.length*15;
   const lv=addXp(xp);
   if(levelInfo().lvl>=10) game.medals.push(...award(["niveau10"]));
-  const unlocked=ACCESSORIES.filter(a=>a.lvl>lv.before&&a.lvl<=lv.after);
+  const unlocked=[...PLUMES,...ACCESSORIES].filter(a=>(a.unlock?.lvl>lv.before&&a.unlock.lvl<=lv.after)||(a.unlock?.medal&&game.medals.some(m=>m.id===a.unlock.medal)));
   const L=levelInfo();
   $("xpline").innerHTML=lv.after>lv.before
-    ? `<b>⬆️ Niveau ${lv.after} !</b>${unlocked.length?` Nouveau pour ton oie : ${unlocked.map(a=>`${a.e} ${a.nom}`).join(", ")}`:""}`
+    ? `<b>⬆️ Niveau ${lv.after} !</b>`
     : `+${xp} XP · niveau ${L.lvl} <span class="xpbar"><i style="width:${Math.round(100*L.cur/L.need)}%"></i></span>`;
+  if(unlocked.length) $("xpline").innerHTML+=`<div class="gifts">🎁 Nouveau pour ton oie : ${unlocked.map(a=>`${a.e} ${a.nom}`).join(", ")}</div>`;
   $("endmedals").innerHTML=game.medals.length?`🏅 ${game.medals.map(m=>`<span title="${m.nom}">${m.e}</span>`).join(" ")} <small>${game.medals.map(m=>m.nom).join(" · ")}</small>`:"";
   $("newstamps").innerHTML=game.stamps.length?`🛂 ${game.stamps.length} nouveau${game.stamps.length>1?"x":""} tampon${game.stamps.length>1?"s":""} : <span>${game.stamps.map(c=>flag(c.a2)).join(" ")}</span>`:"";
   // l'oie danse quand c'est réussi (ou quand on monte de niveau)
