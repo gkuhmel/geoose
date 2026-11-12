@@ -17,6 +17,7 @@
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "topojson-server": "^3.0.1",
     "vite": "^5.4.0",
     "vite-plugin-singlefile": "^2.0.0",
     "wrangler": "^4.158.0"

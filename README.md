@@ -32,6 +32,7 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 - **🛂 Passeport** : un tampon par pays et par mode réussi, progression par continent, et une carte du monde des pays visités.
 - **🔊 Sons et 🗣️ voix** : cri d'oie à l'atterrissage parfait, ding, tampon… ; lecture des questions à voix haute en option (bouton Voix sur l'accueil, désactivée par défaut).
 - **💡 Le savais-tu ?** : une info amusante sur le pays après chaque réponse.
+- **🇫🇷 France** : deux sous-modes, les 96 départements de métropole (avec leur numéro et leur préfecture) et 82 villes françaises.
 - **🏝️ Îles** : 37 îles (Corse, Hawaï, Galápagos, île de Pâques…) ; il faut viser la zone de l'île.
 - **🗿 Merveilles** : monuments (tour Eiffel, Machu Picchu…) et animaux (kangourous, pandas…).
 - **Parties** : Calme · Chrono · ❤️ Survie (3 vies, de plus en plus dur) · 🔤 Quiz (le pays s'allume, on choisit parmi 4).
@@ -41,3 +42,8 @@ Déploiement : `wrangler.jsonc` publie `dist/` en assets statiques (Worker `geoo
 - **🎨 Thèmes** : Atlas, Néon, Vieille carte, Bonbon, Jungle, Banquise, Volcan — bouton 🎨 sur l'accueil.
 - **App** : sur iPhone / iPad, Safari → Partager → « Sur l'écran d'accueil » : plein écran, icône oie, marche hors ligne.
 - Records stockés en `localStorage` par mode / niveau / chrono ; révisions dans `geoose-revisions`.
+
+## Crédits
+
+- Pays : Natural Earth (via world-atlas).
+- Départements : © IGN – Admin Express, Licence ouverte Etalab (via gregoiredavid/france-geojson).

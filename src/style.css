@@ -711,3 +711,10 @@ body:not(.ingame):not(.pmap) #zoombtns{display:none}
 [data-theme="volcan"] .choice,[data-theme="volcan"] .tool,[data-theme="volcan"] .name{border:1px solid rgba(255,140,60,.18)}
 [data-theme="volcan"] .line{stroke:#ffd84a}
 [data-theme="volcan"] .group h3{color:#c98a6a}
+
+/* zone France : contours des départements (seulement pendant une question « France ») */
+.dept{fill:none;stroke:var(--coast);stroke-opacity:.45;stroke-width:calc(.9px / var(--k,1));stroke-linejoin:round;pointer-events:none;display:none}
+#map.fr .dept{display:block}
+.credits{font-size:11.5px;font-weight:600;color:var(--muted);margin:14px 2px 0;line-height:1.3}
+/* sous-modes France : 2 grandes tuiles */
+#frmodes .choice{padding:22px 6px 18px}

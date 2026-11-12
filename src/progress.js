@@ -30,11 +30,11 @@ export const getEquip = () => get("geoose-oie", {});
 export const setEquip = e => put("geoose-oie", e);
 
 // ---------- statistiques (tableau de progrès) ----------
-export const getStats = () => Object.assign({ games: 0, days: {}, ok: {}, miss: {}, conf: {}, perfects: 0, merveilles: 0, iles: 0, bestRun: 0 }, get("geoose-stats", {}));
+export const getStats = () => Object.assign({ games: 0, days: {}, ok: {}, miss: {}, conf: {}, perfects: 0, merveilles: 0, iles: 0, france: 0, bestRun: 0 }, get("geoose-stats", {}));
 export const saveStats = s => put("geoose-stats", s);
 export function addPlayTime(sec) { const s = getStats(), d = dayStr(); s.days[d] = (s.days[d] || 0) + Math.round(sec); s.games++; saveStats(s); }
 // une réponse du joueur 1 : réussite par mode, erreurs fréquentes, confusions entre pays
-export function recordAnswer({ type, key, ok, perfect, confused, merveille, ile }) {
+export function recordAnswer({ type, key, ok, perfect, confused, merveille, ile, fr }) {
   const s = getStats();
   const o = s.ok[type] || (s.ok[type] = [0, 0]); o[1]++; if (ok) o[0]++;
   if (!ok) s.miss[key] = (s.miss[key] || 0) + 1;
@@ -42,6 +42,7 @@ export function recordAnswer({ type, key, ok, perfect, confused, merveille, ile 
   if (perfect) s.perfects++;
   if (ok && merveille) s.merveilles++;
   if (ok && ile) s.iles = (s.iles || 0) + 1;
+  if (ok && fr) s.france = (s.france || 0) + 1;
   saveStats(s);
   return s;
 }
@@ -78,6 +79,7 @@ export const MEDALS = [
   { id: "quiz", e: "🧠", nom: "Je-sais-tout", desc: "10 sur 10 en Quiz" },
   { id: "merveilles", e: "🗿", nom: "Chasseur de merveilles", desc: "10 merveilles trouvées" },
   { id: "robinson", e: "🏝️", nom: "Robinson", desc: "10 îles trouvées" },
+  { id: "tourdefrance", e: "🚴", nom: "Tour de France", desc: "20 départements ou villes de France trouvés" },
   { id: "capitales", e: "🏛️", nom: "Roi des capitales", desc: "50 capitales au passeport" },
   { id: "globe", e: "🌍", nom: "Globe-trotteur", desc: "50 pays au passeport" },
   { id: "tour", e: "👑", nom: "Tour du monde", desc: "Les 197 pays au passeport" },
