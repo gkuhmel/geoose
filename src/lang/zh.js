@@ -231,6 +231,7 @@ export const ACC = {
 export const PLUME = { blanche:"白鹅", cendree:"灰雁", royale:"皇家鹅", girafe:"长颈鹿鹅", panda:"熊猫鹅", toucan:"巨嘴鸟鹅", recif:"珊瑚鹅", doree:"金鹅", cosmique:"宇宙鹅" };
 export const SLOT = { tete:"头部", yeux:"眼睛", bec:"嘴", cou:"脖子", dos:"背部", pattes:"脚", objet:"手持" };
 export const UI = {
+  bonvoyage:"一路顺风，Nils！🌍",
   a_menu:"菜单",a_sound:"声音",a_listen:"收听",a_settings:"设置",a_close:"关闭",a_voice:"语音",a_relisten:"点击重新收听",
   oceans:["大西洋","太平洋","印度洋","地中海","北冰洋","北海"],
   tip: "👆 点击地图放下大鹅 · 拖动它来精确瞄准",

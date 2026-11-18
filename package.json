@@ -1,22 +1,32 @@
 {
   "name": "geoose",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
     "cf:dev": "vite build && wrangler dev",
-    "deploy": "vite build && wrangler deploy"
+    "deploy": "vite build && wrangler deploy",
+    "ios": "vite build && cap sync ios && cap open ios",
+    "ios:sync": "vite build && cap sync ios",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
+    "@fontsource/baloo-2": "^5.3.0",
     "d3": "^7.9.0",
     "topojson-client": "^3.1.0",
     "topojson-simplify": "^3.0.3",
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "topojson-server": "^3.0.1",
     "vite": "^5.4.0",
     "vite-plugin-singlefile": "^2.0.0",

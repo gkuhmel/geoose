@@ -359,6 +359,7 @@ export const ACC = {
 export const PLUME = { blanche:"Oca blanca", cendree:"Ánsar común", royale:"Oca real", girafe:"Oca jirafa", panda:"Oca panda", toucan:"Oca tucán", recif:"Oca arrecife", doree:"Oca dorada", cosmique:"Oca cósmica" };
 export const SLOT = { tete:"Cabeza", yeux:"Ojos", bec:"Pico", cou:"Cuello", dos:"Espalda", pattes:"Patas", objet:"En la mano" };
 export const UI = {
+  bonvoyage:"¡Buen viaje, Nils! 🌍",
   a_menu:"Menú",a_sound:"Sonidos",a_listen:"Escuchar",a_settings:"Ajustes",a_close:"Cerrar",a_voice:"Voz",a_relisten:"Toca para volver a escuchar",
   oceans:["OCÉANO ATLÁNTICO","OCÉANO PACÍFICO","OCÉANO ÍNDICO","Mar Mediterráneo","OCÉANO ÁRTICO","Mar del Norte"],
   tip: "👆 Toca el mapa para posar la oca · arrástrala para afinar la puntería",

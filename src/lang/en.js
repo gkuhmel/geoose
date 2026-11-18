@@ -367,6 +367,7 @@ export const PLUME = { blanche:"White goose", cendree:"Greylag goose", royale:"R
 export const SLOT = { tete:"Head", yeux:"Eyes", bec:"Beak", cou:"Neck", dos:"Back", pattes:"Feet", objet:"Held item" };
 
 export const UI = {
+  bonvoyage:"Bon voyage, Nils! 🌍",
   a_menu:"Menu",a_sound:"Sounds",a_listen:"Listen",a_settings:"Settings",a_close:"Close",a_voice:"Voice",a_relisten:"Tap to listen again",
   oceans:["ATLANTIC OCEAN","PACIFIC OCEAN","INDIAN OCEAN","Mediterranean Sea","ARCTIC OCEAN","North Sea"],
   tip: "👆 Tap the map to drop the goose · drag it to aim precisely",

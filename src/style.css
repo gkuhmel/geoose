@@ -518,6 +518,8 @@ body.pmap .land{fill:var(--land-off)}
 @keyframes orbit{to{transform:rotate(360deg)}}
 #splash .logo{font-size:clamp(52px,15vw,72px)}
 .splashsub{font-size:19px;font-weight:700;color:#fff;text-shadow:0 2px 6px rgba(0,40,80,.35)}
+.splashnils{margin-top:6px;font-size:15px;font-weight:600;color:#fff;opacity:.85;text-shadow:0 2px 6px rgba(0,40,80,.35)}
+[data-theme="carte"] .splashnils{color:var(--muted);text-shadow:none}
 [data-theme="carte"] .splashsub{color:var(--ink);text-shadow:none}
 
 /* menu */

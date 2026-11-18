@@ -1,3 +1,5 @@
+import { isNative, nativeStart, nativeStatusBar } from "./native.js"; // en premier : copie des sauvegardes (appli iOS)
+import "./fonts.css"; // Baloo 2 embarquée (woff2 seulement) : aucune ressource externe
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import { presimplify, simplify } from "topojson-simplify";
@@ -446,6 +448,7 @@ function applyTheme(id){
   const t=THEMES.find(x=>x[0]===id)||THEMES[0];
   if(t[0]==="atlas") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=t[0];
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content",t[2]);
+  nativeStatusBar(t[2]);
   document.querySelectorAll("#themes .choice").forEach(b=>b.classList.toggle("on",b.dataset.t===t[0]));
   store.set("geoose-theme",t[0]);
   // iPad / Safari : reconstruit les calques flous (sinon rectangles noirs après changement de couleurs)
@@ -1167,6 +1170,7 @@ setTimeout(()=>lodFor(1),300); setTimeout(()=>lodFor(2),900);
 
 // ---------- app installable (service worker, hors ligne) : seulement sur le site, pas dans un iframe ----------
 try{
-  if("serviceWorker" in navigator && location.protocol==="https:" && window.top===window)
+  if(!isNative && "serviceWorker" in navigator && location.protocol==="https:" && window.top===window)
     addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 }catch(e){}
+nativeStart();

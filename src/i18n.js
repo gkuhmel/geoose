@@ -57,6 +57,7 @@ export const MONTHS = () => P ? P.MONTHS : ["JANV","FÉVR","MARS","AVR","MAI","J
 
 // ---------- textes d'interface ----------
 const FR = {
+  bonvoyage:"Bon voyage, Nils ! 🌍",
   a_menu:"Menu",a_sound:"Sons",a_listen:"Écouter",a_settings:"Réglages",a_close:"Fermer",a_voice:"Voix",a_relisten:"Toucher pour réécouter",
   oceans:["OCÉAN ATLANTIQUE","OCÉAN PACIFIQUE","OCÉAN INDIEN","Mer Méditerranée","OCÉAN ARCTIQUE","Mer du Nord"],
   tip: "👆 Touche la carte pour poser l'oie · fais-la glisser pour viser juste",

@@ -360,6 +360,7 @@ export const ACC = {
 export const PLUME = { blanche:"Oca bianca", cendree:"Oca selvatica", royale:"Oca reale", girafe:"Oca giraffa", panda:"Oca panda", toucan:"Oca tucano", recif:"Oca corallo", doree:"Oca d'oro", cosmique:"Oca cosmica" };
 export const SLOT = { tete:"Testa", yeux:"Occhi", bec:"Becco", cou:"Collo", dos:"Schiena", pattes:"Zampe", objet:"In mano" };
 export const UI = {
+  bonvoyage:"Buon viaggio, Nils! 🌍",
   a_menu:"Menu",a_sound:"Suoni",a_listen:"Ascolta",a_settings:"Impostazioni",a_close:"Chiudi",a_voice:"Voce",a_relisten:"Tocca per riascoltare",
   oceans:["OCEANO ATLANTICO","OCEANO PACIFICO","OCEANO INDIANO","Mar Mediterraneo","OCEANO ARTICO","Mare del Nord"],
   tip: "👆 Tocca la mappa per posare l'oca · trascinala per mirare bene",

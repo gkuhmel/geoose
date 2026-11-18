@@ -359,6 +359,7 @@ export const ACC = {
 export const PLUME = { blanche:"Weiße Gans", cendree:"Graugans", royale:"Königsgans", girafe:"Giraffengans", panda:"Pandagans", toucan:"Tukangans", recif:"Riffgans", doree:"Goldene Gans", cosmique:"Kosmische Gans" };
 export const SLOT = { tete:"Kopf", yeux:"Augen", bec:"Schnabel", cou:"Hals", dos:"Rücken", pattes:"Füße", objet:"In der Hand" };
 export const UI = {
+  bonvoyage:"Gute Reise, Nils! 🌍",
   a_menu:"Menü",a_sound:"Töne",a_listen:"Anhören",a_settings:"Einstellungen",a_close:"Schließen",a_voice:"Stimme",a_relisten:"Tippen zum erneuten Anhören",
   oceans:["ATLANTISCHER OZEAN","PAZIFISCHER OZEAN","INDISCHER OZEAN","Mittelmeer","ARKTISCHER OZEAN","Nordsee"],
   tip: "👆 Tippe auf die Karte, um die Gans abzusetzen · zieh sie, um genau zu zielen",
