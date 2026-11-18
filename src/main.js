@@ -449,6 +449,9 @@ function applyTheme(id){
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content",t[2]);
   document.querySelectorAll("#themes .choice").forEach(b=>b.classList.toggle("on",b.dataset.t===t[0]));
   store.set("geoose-theme",t[0]);
+  // iPad / Safari : reconstruit les calques flous (sinon rectangles noirs après changement de couleurs)
+  const html=document.documentElement; html.classList.add("retheme");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ html.classList.remove("retheme"); void html.offsetHeight; }));
 }
 $("themes").addEventListener("click",e=>{ const b=e.target.closest(".choice"); if(b){ applyTheme(b.dataset.t); sfx.plop(); } });
 applyTheme(store.get("geoose-theme")||"atlas");

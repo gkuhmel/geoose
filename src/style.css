@@ -27,7 +27,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html,body{margin:0;height:100%;overflow:hidden;font-family:"Baloo 2",ui-rounded,system-ui,sans-serif;color:var(--ink);touch-action:none;overscroll-behavior:none}
-body{background:var(--bg);transition:background .4s}
+html,body{background:var(--bg)}
 button{font-family:inherit;cursor:pointer}
 
 /* ---------- carte ---------- */
@@ -374,7 +374,6 @@ body.pmap .land{fill:var(--land-off)}
 [data-theme="carte"] .ptitle,[data-theme="carte"] #endtitle,[data-theme="carte"] #rmsg,[data-theme="carte"] #qname:not(.flagq){font-family:Georgia,"Times New Roman",serif;letter-spacing:-.01em}
 [data-theme="carte"] .group h3,[data-theme="carte"] #qlabel{font-family:Georgia,"Times New Roman",serif;font-style:italic;text-transform:none;letter-spacing:.04em;font-size:13px}
 [data-theme="carte"] .line{stroke:#7c2c19}
-[data-theme="carte"] .glass{-webkit-backdrop-filter:none;backdrop-filter:none}
 
 /* étiquette de la réponse sur la carte : couleur du thème */
 .tlabel rect,.tlabel path{fill:var(--tag)}
@@ -718,3 +717,7 @@ body:not(.ingame):not(.pmap) #zoombtns{display:none}
 .credits{font-size:11.5px;font-weight:600;color:var(--muted);margin:14px 2px 0;line-height:1.3}
 /* sous-modes France : 2 grandes tuiles */
 #frmodes .choice{padding:22px 6px 18px}
+
+/* changement de thème : on coupe le flou une image pour forcer Safari (iPad) à reconstruire
+   ses calques, sinon certains panneaux floutés restent en rectangle noir */
+html.retheme *,html.retheme *::before{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;transition:none !important}
