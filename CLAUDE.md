@@ -1,6 +1,6 @@
 # Geoose — notes pour Claude Code
 
-Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPhone et iPad via Safari** (aussi publié comme artifact claude.ai : tout doit tenir dans `dist/index.html`, aucun fetch réseau).
+Jeu de géo pour enfants (créé pour Nils). Interface en 6 langues (français par défaut des données), ton ludique, cible **iPhone et iPad via Safari** (aussi publié comme artifact claude.ai : tout doit tenir dans `dist/index.html`, aucun fetch réseau).
 
 ## Stack
 - Vite + JS vanilla (pas de framework), `vite-plugin-singlefile` pour un build en un seul HTML.
@@ -10,6 +10,7 @@ Jeu de géo pour Nils (enfant). Interface en français, ton ludique, cible **iPh
 - Police Google Fonts « Baloo 2 » (seule ressource externe).
 
 ## Fichiers
+- **Multilingue** (mêmes langues que Tomettes : fr, en, es, de, it, zh) : `src/i18n.js` (dictionnaire français `FR`, `t()` / `tt()`, helpers de noms `cn`, `theC`, `inC`, `ofC`, `ccap`, `cityN`, `monN`, `islN`, `vfrN`, `medalN`, `accN`, `plumeN`, `contN`…) + un fichier par langue `src/lang/xx.js` (UI, noms, infos, grammaire `G`). Le français reste la langue des données ; noms de pays via `Intl.DisplayNames` (corrigés par `NAME`) ; repli sur le français si une clé manque. Langue dans `geoose-langue` (sinon langue de l'appareil, sinon anglais), choix dans ⚙️ Réglages ; **changer de langue recharge la page**. HTML : `data-i18n`, `data-i18n-aria`, `data-i18n-title` (appliqués par `applyStatic`). Aucun texte d'interface en dur dans `main.js` : ajouter la clé dans `FR` **et** dans les 5 `UI`. Noms des départements et préfectures : en français partout. Voix : `speechLang()`.
 - `index.html` : markup (HUD, carte SVG, écrans accueil / fin).
 - `src/style.css` : styles (glassmorphism, animations, media query ≥ 700px pour iPad).
 - **Thèmes** (⚙️ Réglages, `geoose-theme`, liste `THEMES`) : Atlas (défaut, clair pastel), Néon (nuit, contours lumineux), Vieille carte (parchemin, sépia, Georgia), Bonbon (rose guimauve), Jungle (fleuves turquoise, terres vertes), Banquise (mer polaire, terres de glace), Volcan (roche sombre, côtes de lave). Toutes les couleurs passent par des variables CSS (`:root`, puis `:root[data-theme="…"]` en fin de `style.css`) ; ne pas remettre de couleur en dur. Les pays ont une classe `c0…c6` → `--l0…--l6` (aucun redessin au changement de thème). Pas de `filter` CSS sur la carte (perf) : la lueur du Néon vient des halos existants.

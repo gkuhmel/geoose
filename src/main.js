@@ -6,21 +6,20 @@ import { COUNTRIES, CONTINENTS } from "./countries.js";
 import { FACTS } from "./facts.js";
 import { CITIES } from "./cities.js";
 import { MONUMENTS } from "./monuments.js";
-import { PLUMES, plumeOf, ACCESSORIES, SLOTS, gooseParts, gooseSVG, isUnlocked, unlockText } from "./goose.js";
+import { PLUMES, plumeOf, ACCESSORIES, SLOTS, gooseParts, gooseSVG, isUnlocked } from "./goose.js";
 import { ISLANDS } from "./islands.js";
 import { DEPT_TOPO, DEPT_INFO, VILLES_FR } from "./france.js";
 import { dayStr, seededRng, levelInfo, addXp, getEquip, setEquip, getStats, addPlayTime, recordAnswer, getDefi, currentStreak, defiDoneToday, finishDefi, MEDALS, getMedals, award } from "./progress.js";
 import { sfx, say, unlock, soundOn, setSound, voiceOn, setVoice } from "./audio.js";
+import { t, tt, fmt, cn, theC, inC, ofC, ccap, cityN, monN, monT, islN, islT, islFact, factOf, vfrN, vfrFact, medalN, medalD, accN, plumeN, slotN, contN, MONTHS, LANGS, lang, setLang, applyStatic } from "./i18n.js";
 import "./style.css";
 const C = COUNTRIES;
 
 const ROUNDS=10, MAXPTS=1000, CHRONO_S=15, BONUS_MAX=300, R=6371;
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-const fmt=n=>n.toLocaleString("fr-FR");
 const flag=a2=>String.fromCodePoint(...[...a2].map(c=>0x1F1E6+c.charCodeAt(0)-65));
-const de=c=>c.art==="l'"?"de l'":c.art==="les"?"des ":c.art==="le"?"du ":c.art==="la"?"de la ":/^[AEIOUYÉÈÎ]/i.test(c.nom)?"d'":"de ";
-const dans=c=>c.art==="l'"?"en ":c.art==="les"?"aux ":c.art==="le"?"au ":c.art==="la"?"en ":"à ";
+applyStatic();
 
 // iOS : bloque le zoom de page (iPad)
 ["gesturestart","gesturechange"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
@@ -102,7 +101,7 @@ const gLand=root.append("g");
 // départements français : contours (IGN), visibles seulement pendant une partie « France » (#map.fr)
 const gDept=root.append("path").attr("class","dept");
 const DEPTS=topojson.feature(DEPT_TOPO,DEPT_TOPO.objects.departements).features.map(f=>{
-  const [pref,tier]=DEPT_INFO[f.properties.code]||["",4];
+  const [pref,tier]=DEPT_INFO[f.properties.code]||["",4]; // noms des départements : en français dans toutes les langues
   return {code:f.properties.code,nom:f.properties.nom,pref,tier,f,ctr:d3.geoCentroid(f),id:f.properties.code};
 });
 const deptByCode=new Map(DEPTS.map(d=>[d.code,d]));
@@ -125,7 +124,7 @@ const tinyQ=q=>q.dep?tinyF(q.dep.f,.35):(q.type==="pays"||q.type==="drapeau"||q.
 const gOcean=root.append("g");
 const gOver=root.append("g");
 const lands=gLand.selectAll("path").data(features).join("path").attr("class",(d,i)=>"land c"+col[i]); // couleur = variable du thème (--l0…--l6)
-const OCEANS=[["OCÉAN ATLANTIQUE",-38,30],["OCÉAN ATLANTIQUE",-18,-22],["OCÉAN PACIFIQUE",-140,8],["OCÉAN PACIFIQUE",165,22],["OCÉAN INDIEN",78,-18],["Mer Méditerranée",17,34.6,4],["OCÉAN ARCTIQUE",-5,78],["Mer du Nord",3.5,56.3,6]];
+const OC=tt("oceans"), OCEANS=[[OC[0],-38,30],[OC[0],-18,-22],[OC[1],-140,8],[OC[1],165,22],[OC[2],78,-18],[OC[3],17,34.6,4],[OC[4],-5,78],[OC[5],3.5,56.3,6]];
 let W=0,H=0,k=1,MH=0;
 
 function layout(){
@@ -260,7 +259,7 @@ const NUM_KEYS=new Set(["level","chrono","players"]);
 const PCOL=["#4aa3d6","#f08a24"];
 let equip=getEquip();
 
-$("conts").innerHTML=Object.entries(CONTINENTS).map(([k,v])=>`<button class="choice" data-v="${k}"><span class="e">${v.e}</span>${k==="monde"?"Le monde entier":v.nom}</button>`).join("");
+$("conts").innerHTML=Object.entries(CONTINENTS).map(([k,v])=>`<button class="choice" data-v="${k}"><span class="e">${v.e}</span>${k==="monde"?t("wholeworld"):contN(k,v.nom)}</button>`).join("");
 document.querySelectorAll(".choices[data-k]").forEach(g=>{
   const key=g.dataset.k;
   g.querySelectorAll(".choice").forEach(x=>x.classList.toggle("on",x.dataset.v===String(opts[key])));
@@ -276,7 +275,7 @@ document.querySelectorAll(".choices[data-k]").forEach(g=>{
   });
 });
 // prénoms (mode à deux)
-try{ const n=JSON.parse(store.get(NAMES_KEY)||"null")||["Nils","Papa"]; $("name1").value=n[0]; $("name2").value=n[1]; }catch(e){ $("name1").value="Nils"; $("name2").value="Papa"; }
+try{ const n=JSON.parse(store.get(NAMES_KEY)||"null")||[t("p1"),t("p2")]; $("name1").value=n[0]; $("name2").value=n[1]; }catch(e){ $("name1").value=t("p1"); $("name2").value=t("p2"); }
 ["name1","name2"].forEach(id=>$(id).addEventListener("input",()=>store.set(NAMES_KEY,JSON.stringify([$("name1").value,$("name2").value]))));
 ["name1","name2"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")e.target.blur();}));
 
@@ -292,10 +291,10 @@ const cityById=new Map(CITIES.map(v=>[v.id,v]));
 const monById=new Map(MONUMENTS.map(m=>[m.id,m]));
 const islById=new Map(ISLANDS.map(i=>[i.id,i]));
 const cap1=s=>s[0].toUpperCase()+s.slice(1);
-const monTitle=m=>`${m.e} ${cap1(m.nom)}`;
+const monTitle=m=>monT(m);
 // nom à trouver / point cible / clé (révisions, doublons) d'une question
-const islTitle=i=>`${i.e} ${cap1(i.nom)}`;
-const placeName=q=>q.dep?`${q.dep.nom} (${q.dep.code})`:q.vfr?q.vfr.nom:q.type==="ville"?q.city.nom:q.type==="monument"?monTitle(q.mon):q.type==="ile"?islTitle(q.isl):q.type==="capitale"?q.c.cap:q.c.nom;
+const islTitle=i=>islT(i);
+const placeName=q=>q.dep?`${q.dep.nom} (${q.dep.code})`:q.vfr?vfrN(q.vfr):q.type==="ville"?cityN(q.city):q.type==="monument"?monTitle(q.mon):q.type==="ile"?islTitle(q.isl):q.type==="capitale"?ccap(q.c):cn(q.c);
 const targetOf=q=>q.dep?q.dep.ctr:q.vfr?[q.vfr.lon,q.vfr.lat]:q.city?[q.city.lon,q.city.lat]:q.mon?[q.mon.lon,q.mon.lat]:q.isl?[q.isl.lon,q.isl.lat]:[q.c.lon,q.c.lat];
 // île : zone (cercle du rayon de l'île) à atteindre
 const zoneOf=q=>d3.geoCircle().center([q.isl.lon,q.isl.lat]).radius(q.isl.r/111.2)();
@@ -303,7 +302,7 @@ const revKey=q=>q.dep?`dept|${q.dep.code}`:q.vfr?`villefr|${q.vfr.id}`:q.type===
 const qKey=q=>q.dep?"d"+q.dep.code:q.vfr?q.vfr.id:q.city?q.city.id:q.mon?q.mon.id:q.isl?q.isl.id:q.c.iso;
 const shuffle=(a,rnd=Math.random)=>{for(let i=a.length-1;i>0;i--){const j=rnd()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const byKey=new Map(C.map(c=>[c.iso,c]));
-const nomAvecArticle=c=>c.art==="l'"?"l'"+c.nom:c.art?c.art+" "+c.nom:c.nom;
+const nomAvecArticle=c=>theC(c);
 // pays sans voisin terrestre (médaille « Île au trésor »)
 const ISLE_COUNTRIES=new Set();
 { const m=new Map(); features.forEach((f,j)=>{ if(f.id!==undefined) m.set(f.id,(m.get(f.id)??true)&&nb[j].length===0); }); m.forEach((v,k)=>v&&ISLE_COUNTRIES.add(k)); }
@@ -376,19 +375,19 @@ function addStamp(c,type){
 }
 // ---------- dessin d'un tampon (SVG) : anneau à l'encre du continent, nom en arc, drapeau, étoiles, date ----------
 const INK={europe:"#2f62b0",afrique:"#c4502f",asie:"#b52d45",ameriques:"#23885a",oceanie:"#7a4bb0"};
-const MOIS=["JANV","FÉVR","MARS","AVR","MAI","JUIN","JUIL","AOÛT","SEPT","OCT","NOV","DÉC"];
+const MOIS=MONTHS();
 const hashIso=s=>[...s].reduce((h,ch)=>(h*31+ch.charCodeAt(0))%997,7);
 const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
 function stampSVG(c,{got=passport[c.iso]||[],date=passDates[c.iso]}={}){
-  const id="a"+c.iso, name=esc(c.nom.toUpperCase());
+  const nm=cn(c), id="a"+c.iso, name=esc(nm.toUpperCase());
   // arc de 240° (de 210° à -30°) pour le nom, rayon 46.5 ; taille de police selon la longueur
   const r=46.5, a0=210*Math.PI/180, a1=-30*Math.PI/180;
   const P=a=>`${(60+r*Math.cos(a)).toFixed(1)},${(60-r*Math.sin(a)).toFixed(1)}`;
-  const fs=Math.min(10.5,195/(c.nom.length*.66));
+  const fs=Math.min(10.5,195/(Math.max(4,[...nm].length)*(lang==="zh"?1.5:.66)));
   if(!got.length){
     return `<svg viewBox="0 0 120 120" class="stampsvg off"><circle cx="60" cy="60" r="54" fill="none" stroke="#c3cad8" stroke-width="2" stroke-dasharray="5 4"/>
 <text x="60" y="66" text-anchor="middle" font-size="34" class="fl">${flag(c.a2)}</text>
-<text x="60" y="94" text-anchor="middle" font-size="${Math.min(14,170/c.nom.length).toFixed(1)}" font-weight="800" fill="#97a1b5">${esc(c.nom)}</text></svg>`;
+<text x="60" y="94" text-anchor="middle" font-size="${Math.min(14,170/([...nm].length*(lang==="zh"?1.8:1))).toFixed(1)}" font-weight="800" fill="#97a1b5">${esc(nm)}</text></svg>`;
   }
   const ink=INK[c.cont]||"#2f62b0", rot=(hashIso(c.iso)%29)-14, n=got.length;
   const d=date?date.split("-"):null, dateTxt=d?`${d[2]} ${MOIS[+d[1]-1]} ${d[0]}`:"";
@@ -403,10 +402,10 @@ ${dateTxt?`<text font-size="7" font-weight="700" fill="${ink}" letter-spacing=".
 let passTab="europe";
 function renderPassport(){
   const n=C.filter(stamped).length;
-  $("ptotal").textContent=`${n} pays visité${n>1?"s":""} sur ${C.length}`;
+  $("ptotal").textContent=t("visited",n);
   $("ptabs").innerHTML=Object.entries(CONTINENTS).filter(([k])=>k!=="monde").map(([k,v])=>{
     const all=C.filter(c=>c.cont===k), got=all.filter(stamped).length;
-    return `<button class="ptab${k===passTab?" on":""}" data-k="${k}">${v.e} ${v.nom}<small>${got}/${all.length}</small></button>`;
+    return `<button class="ptab${k===passTab?" on":""}" data-k="${k}">${v.e} ${contN(k,v.nom)}<small>${got}/${all.length}</small></button>`;
   }).join("");
   $("pgrid").innerHTML=C.filter(c=>c.cont===passTab).map(c=>`<button class="stamp" data-iso="${c.iso}">${stampSVG(c)}</button>`).join("");
   $("pgrid").scrollTop=0;
@@ -414,7 +413,7 @@ function renderPassport(){
 $("ptabs").addEventListener("click",e=>{const b=e.target.closest(".ptab"); if(b){passTab=b.dataset.k; renderPassport();}});
 $("pgrid").addEventListener("click",e=>{
   const b=e.target.closest(".stamp"); if(!b) return; const c=byKey.get(b.dataset.iso), got=passport[c.iso]||[];
-  if(voiceOn()) say(`${nomAvecArticle(c)}. Capitale : ${c.cap}.`+(got.length?` ${got.length} étoile${got.length>1?"s":""} sur 4.`:""));
+  if(voiceOn()) say(`${cn(c)}. ${t("capitalOf",ccap(c))}.`);
 });
 const openScreen=id=>{ unlock(); $(id).classList.remove("hidden"); };
 const closeScreen=id=>{ $(id).classList.add("hidden"); showBest(); };
@@ -439,7 +438,7 @@ document.addEventListener("pointerdown",unlock,{once:true,capture:true});
 showSound();
 // voix : lecture des noms (questions, passeport) ; désactivée par défaut
 function showVoice(){ document.querySelectorAll(".voice").forEach(b=>{ b.firstChild.textContent=voiceOn()?"🗣️":"🤐"; b.classList.toggle("off",!voiceOn()); }); }
-document.querySelectorAll(".voice").forEach(b=>b.addEventListener("click",()=>{ setVoice(!voiceOn()); unlock(); showVoice(); if(voiceOn()) say("Je lirai les questions."); }));
+document.querySelectorAll(".voice").forEach(b=>b.addEventListener("click",()=>{ setVoice(!voiceOn()); unlock(); showVoice(); if(voiceOn()) say(t("willread")); }));
 showVoice();
 // thèmes : Atlas (clair), Néon (nuit lumineuse), Vieille carte (parchemin)
 const THEMES=[["atlas","Atlas","#5fb3e0"],["neon","Néon","#0e1238"],["carte","Vieille carte","#c9d1ae"],["bonbon","Bonbon","#f6b3dc"],["jungle","Jungle","#227f86"],["banquise","Banquise","#1d4f8f"],["volcan","Volcan","#24110f"]];
@@ -455,6 +454,8 @@ function applyTheme(id){
 }
 $("themes").addEventListener("click",e=>{ const b=e.target.closest(".choice"); if(b){ applyTheme(b.dataset.t); sfx.plop(); } });
 applyTheme(store.get("geoose-theme")||"atlas");
+$("langs").innerHTML=LANGS.map(([k,nm])=>`<button class="choice${k===lang?" on":""}" data-l="${k}" lang="${k}">${nm}</button>`).join("");
+$("langs").addEventListener("click",e=>{ const b=e.target.closest(".choice"); if(b&&b.dataset.l!==lang) setLang(b.dataset.l); });
 $("setbtn").onclick=()=>openScreen("reglages");
 $("setclose").onclick=()=>closeScreen("reglages");
 
@@ -467,9 +468,9 @@ function openPassMap(){
   document.body.classList.add("pmap");
   const vis=new Set(C.filter(stamped).map(c=>c.iso));
   lands.style("fill",d=>vis.has(d.id)?PASTEL[byKey.get(d.id).cont]:null);
-  $("pmapn").textContent=`🛂 ${vis.size} pays visité${vis.size>1?"s":""} sur ${C.length}`;
+  $("pmapn").textContent=`🛂 ${t("visited",vis.size)}`;
   $("pmaplegend").innerHTML=Object.entries(CONTINENTS).filter(([k])=>k!=="monde").map(([k,v])=>{
-    const all=C.filter(c=>c.cont===k); return `<span><i style="background:${PASTEL[k]}"></i>${v.nom} ${all.filter(stamped).length}/${all.length}</span>`;}).join("");
+    const all=C.filter(c=>c.cont===k); return `<span><i style="background:${PASTEL[k]}"></i>${contN(k,v.nom)} ${all.filter(stamped).length}/${all.length}</span>`;}).join("");
   $("pmapbar").hidden=false; $("pmapcard").hidden=true;
   // monde entier, centré verticalement sous la barre
   const top=$("pmapbar").getBoundingClientRect().bottom;
@@ -486,7 +487,7 @@ function passMapTap(cx,cy){
   const ll=screenToLL(cx,cy), c=ll&&byKey.get(countryAt(ll));
   if(!c){ $("pmapcard").hidden=true; return; }
   const got=passport[c.iso]||[];
-  $("pmapcard").innerHTML=`${stampSVG(c)}<div><b>${flag(c.a2)} ${c.nom}</b><span>Capitale : ${c.cap}</span><span>${got.length?`${"★".repeat(got.length)}${"☆".repeat(4-got.length)} · ${got.map(t=>({pays:"pays",capitale:"capitale",drapeau:"drapeau",ville:"ville"})[t]).join(", ")}`:"Pas encore visité : à toi de jouer !"}</span></div>`;
+  $("pmapcard").innerHTML=`${stampSVG(c)}<div><b>${flag(c.a2)} ${esc(cn(c))}</b><span>${esc(t("capitalOf",ccap(c)))}</span><span>${got.length?`${"★".repeat(got.length)}${"☆".repeat(4-got.length)} · ${got.map(x=>tt("ty")[x]).join(", ")}`:t("notvisited")}</span></div>`;
   $("pmapcard").hidden=false;
   if(voiceOn()) say(nomAvecArticle(c));
 }
@@ -496,24 +497,26 @@ $("pmapback").onclick=closePassMap;
 // ---------- mon oie : niveau, XP, accessoires ----------
 function renderLevel(){
   const L=levelInfo();
-  $("lvlbadge").innerHTML=`Niv. ${L.lvl}<i style="width:${Math.round(100*L.cur/L.need)}%"></i>`;
+  $("lvlbadge").innerHTML=`${t("lvlS",L.lvl)}<i style="width:${Math.round(100*L.cur/L.need)}%"></i>`;
   $("brandgoose").innerHTML=gooseSVG(equip,"idle");
   if($("splashgoose")) $("splashgoose").innerHTML=gooseSVG(equip,"");
 }
 const unlockCtx=()=>({lvl:levelInfo().lvl,medals:getMedals()});
+// condition de déblocage : « niveau 6 » ou « 🏅 nom de la médaille »
+const unlockText=u=>u.lvl?t("lvlUnlock",u.lvl):`🏅 ${medalN(MEDALS.find(m=>m.id===u.medal)||{id:u.medal,nom:u.why||""})}`;
 function renderOie(){
   const L=levelInfo(), ctx=unlockCtx(), cur=equip.plume||"blanche";
   $("oiepreview").innerHTML=gooseSVG(equip,"idle");
-  $("oielvl").innerHTML=`<b>Niveau ${L.lvl}</b><span class="xpbar"><i style="width:${Math.round(100*L.cur/L.need)}%"></i></span><small>${L.cur} / ${L.need} XP pour le niveau ${L.lvl+1}</small>`;
+  $("oielvl").innerHTML=`<b>${t("lvlL",L.lvl)}</b><span class="xpbar"><i style="width:${Math.round(100*L.cur/L.need)}%"></i></span><small>${t("xpTo",L.cur,L.need,L.lvl+1)}</small>`;
   const nAcc=ACCESSORIES.filter(a=>isUnlocked(a.unlock,ctx)).length, nPl=PLUMES.filter(p=>isUnlocked(p.unlock,ctx)).length;
-  let h=`<h4>🪿 Plumages <small>${nPl} / ${PLUMES.length}</small></h4><div class="oiegrid plumes">`+PLUMES.map(p=>{
+  let h=`<h4>${t("plumes")} <small>${nPl} / ${PLUMES.length}</small></h4><div class="oiegrid plumes">`+PLUMES.map(p=>{
     const open=isUnlocked(p.unlock,ctx), on=cur===p.id;
-    return `<button class="acc${open?"":" locked"}${on?" on":""}" data-plume="${p.id}"><span class="mini">${open?gooseSVG({plume:p.id}):"🔒"}</span>${p.nom}<small>${open?(on?"choisie ✓":p.e):unlockText(p.unlock)}</small></button>`;
-  }).join("")+`</div><h4>🎁 Accessoires <small>${nAcc} / ${ACCESSORIES.length}</small></h4>`;
+    return `<button class="acc${open?"":" locked"}${on?" on":""}" data-plume="${p.id}"><span class="mini">${open?gooseSVG({plume:p.id}):"🔒"}</span>${plumeN(p)}<small>${open?(on?t("chosen"):p.e):unlockText(p.unlock)}</small></button>`;
+  }).join("")+`</div><h4>${t("accs")} <small>${nAcc} / ${ACCESSORIES.length}</small></h4>`;
   for(const [slot,lab] of Object.entries(SLOTS)){
-    h+=`<div class="slotname">${lab}</div><div class="oiegrid">`+ACCESSORIES.filter(a=>a.slot===slot).map(a=>{
+    h+=`<div class="slotname">${slotN(slot,lab)}</div><div class="oiegrid">`+ACCESSORIES.filter(a=>a.slot===slot).map(a=>{
       const open=isUnlocked(a.unlock,ctx), on=equip[a.slot]===a.id;
-      return `<button class="acc${open?"":" locked"}${on?" on":""}" data-id="${a.id}"><span class="e">${open?a.e:"🔒"}</span>${a.nom}<small>${open?(on?"porté ✓":"&nbsp;"):unlockText(a.unlock)}</small></button>`;
+      return `<button class="acc${open?"":" locked"}${on?" on":""}" data-id="${a.id}"><span class="e">${open?a.e:"🔒"}</span>${accN(a)}<small>${open?(on?t("worn"):"&nbsp;"):unlockText(a.unlock)}</small></button>`;
     }).join("")+"</div>";
   }
   $("oiegrid").innerHTML=h;
@@ -536,14 +539,14 @@ $("oieclose").onclick=()=>openTab("jouer");
 
 // ---------- progrès : médailles + tableau pour les parents ----------
 let progTab="medailles";
-function keyLabel(k){ const q=qFromKey(k); return q.c?`${q.type==="monument"||q.type==="ile"?"":flag(q.c.a2)+" "}${placeName(q)} <small>(${({pays:"pays",capitale:"capitale",drapeau:"drapeau",ville:"ville",monument:"merveille",ile:"île",dept:"département",villefr:"ville de France"})[q.type]})</small>`:null; }
+function keyLabel(k){ const q=qFromKey(k); return q.c?`${q.type==="monument"||q.type==="ile"?"":flag(q.c.a2)+" "}${esc(placeName(q))} <small>(${tt("ty")[q.type]})</small>`:null; }
 function renderProgres(){
   document.querySelectorAll("#progtabs .ptab").forEach(b=>b.classList.toggle("on",b.dataset.k===progTab));
   const got=getMedals();
   if(progTab==="medailles"){
-    $("progbody").innerHTML=`<div class="mtotal">${Object.keys(got).length} / ${MEDALS.length} médailles</div><div class="medals">`+MEDALS.map(m=>{
+    $("progbody").innerHTML=`<div class="mtotal">${t("medalsN",Object.keys(got).length,MEDALS.length)}</div><div class="medals">`+MEDALS.map(m=>{
       const d=got[m.id];
-      return `<div class="medal${d?" on":""}"><span class="e">${m.e}</span><b>${m.nom}</b><small>${m.desc}</small>${d?`<i>${d.split("-").reverse().join("/")}</i>`:""}</div>`;
+      return `<div class="medal${d?" on":""}"><span class="e">${m.e}</span><b>${medalN(m)}</b><small>${medalD(m)}</small>${d?`<i>${d.split("-").reverse().join("/")}</i>`:""}</div>`;
     }).join("")+"</div>";
     return;
   }
@@ -551,24 +554,24 @@ function renderProgres(){
   let week=0; for(let i=0;i<7;i++){ const d=new Date(); d.setDate(d.getDate()-i); week+=s.days[dayStr(d)]||0; }
   const conts=Object.entries(CONTINENTS).filter(([k])=>k!=="monde").map(([k,v])=>{
     const all=C.filter(c=>c.cont===k), n=all.filter(stamped).length;
-    return `<div class="srow"><span>${v.e} ${v.nom}</span><span class="sbar"><i style="width:${Math.round(100*n/all.length)}%;background:${PASTEL[k]}"></i></span><b>${n}/${all.length}</b></div>`;
+    return `<div class="srow"><span>${v.e} ${contN(k,v.nom)}</span><span class="sbar"><i style="width:${Math.round(100*n/all.length)}%;background:${PASTEL[k]}"></i></span><b>${n}/${all.length}</b></div>`;
   }).join("");
-  const modes=ALLTYPES.filter(t=>s.ok[t]).map(t=>{ const [a,b]=s.ok[t];
-    return `<div class="srow"><span>${({pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles",ile:"🏝️ Îles",dept:"🇫🇷 Départements",villefr:"🇫🇷 Villes de France"})[t]}</span><span class="sbar"><i style="width:${Math.round(100*a/b)}%"></i></span><b>${Math.round(100*a/b)} %</b></div>`; }).join("")||`<p class="muted">Pas encore de partie.</p>`;
+  const modes=ALLTYPES.filter(x=>s.ok[x]).map(x=>{ const [a,b]=s.ok[x];
+    return `<div class="srow"><span>${tt("ml")[x]}</span><span class="sbar"><i style="width:${Math.round(100*a/b)}%"></i></span><b>${Math.round(100*a/b)} %</b></div>`; }).join("")||`<p class="muted">${t("nogame")}</p>`;
   const misses=Object.entries(s.miss).sort((a,b)=>b[1]-a[1]).map(([k,n])=>[keyLabel(k),n]).filter(x=>x[0]).slice(0,6)
-    .map(([l,n])=>`<li>${l} <b>${n}×</b></li>`).join("")||`<li class="muted">Rien à signaler 👏</li>`;
-  const confs=Object.entries(s.conf).sort((a,b)=>b[1]-a[1]).map(([k,n])=>{ const [x,y]=k.split(">").map(i=>byKey.get(i)); return x&&y?`<li>${flag(x.a2)} ${x.nom} ↔ ${flag(y.a2)} ${y.nom} <b>${n}×</b></li>`:""; }).filter(Boolean).slice(0,4).join("")||`<li class="muted">Aucune pour l'instant</li>`;
+    .map(([l,n])=>`<li>${l} <b>${n}×</b></li>`).join("")||`<li class="muted">${t("nothing")}</li>`;
+  const confs=Object.entries(s.conf).sort((a,b)=>b[1]-a[1]).map(([k,n])=>{ const [x,y]=k.split(">").map(i=>byKey.get(i)); return x&&y?`<li>${flag(x.a2)} ${esc(cn(x))} ↔ ${flag(y.a2)} ${esc(cn(y))} <b>${n}×</b></li>`:""; }).filter(Boolean).slice(0,4).join("")||`<li class="muted">${t("noconf")}</li>`;
   $("progbody").innerHTML=`
   <div class="sgrid">
-    <div class="scard"><b>${Math.round(week/60)} min</b><small>de jeu cette semaine</small></div>
-    <div class="scard"><b>${s.games}</b><small>parties jouées</small></div>
-    <div class="scard"><b>🔥 ${currentStreak(df)}</b><small>jours de défi (record ${df.best})</small></div>
-    <div class="scard"><b>Niv. ${L.lvl}</b><small>${L.xp} XP en tout</small></div>
+    <div class="scard"><b>${Math.round(week/60)} min</b><small>${t("week")}</small></div>
+    <div class="scard"><b>${s.games}</b><small>${t("games")}</small></div>
+    <div class="scard"><b>🔥 ${currentStreak(df)}</b><small>${t("defidays",df.best)}</small></div>
+    <div class="scard"><b>${t("lvlS",L.lvl)}</b><small>${t("xptotal",L.xp)}</small></div>
   </div>
-  <h4>🛂 Pays au passeport</h4>${conts}
-  <h4>🎯 Réussite par mode</h4>${modes}
-  <h4>📌 À retravailler</h4><ul>${misses}</ul>
-  <h4>🔀 Confusions fréquentes</h4><ul>${confs}</ul>`;
+  <h4>${t("h_pass")}</h4>${conts}
+  <h4>${t("h_ok")}</h4>${modes}
+  <h4>${t("h_miss")}</h4><ul>${misses}</ul>
+  <h4>${t("h_conf")}</h4><ul>${confs}</ul>`;
 }
 $("progtabs").addEventListener("click",e=>{ const b=e.target.closest(".ptab"); if(b){ progTab=b.dataset.k; renderProgres(); } });
 $("progclose").onclick=()=>openTab("jouer");
@@ -576,26 +579,25 @@ $("progclose").onclick=()=>openTab("jouer");
 // ---------- accueil ----------
 const special=()=>opts.chrono>=2; // survie et quiz : solo
 const bestKey=()=>`geoose4-${modeType()}-${opts.level}-${opts.chrono}-${opts.cont}`;
-const LBL={mode:{pays:"🗺️ Pays",capitale:"🏛️ Capitales",drapeau:"🚩 Drapeaux",ville:"🏙️ Villes",monument:"🗿 Merveilles",ile:"🏝️ Îles",mix:"🎲 Mélange",dept:"🇫🇷 Départements",villefr:"🇫🇷 Villes de France"},
-  level:["","Facile","Moyen","Difficile","Expert"],chrono:["Calme","Chrono","Survie","Quiz"]};
-const optsSummary=()=>`${LBL.mode[modeType()]} · ${opts.mode==="france"?"France":CONTINENTS[opts.cont].nom} · ${LBL.level[opts.level]} · ${LBL.chrono[opts.chrono]}${opts.players>1&&!special()?" · à deux":""}`;
+const LBL={mode:tt("ml"),level:tt("levels"),chrono:tt("chronos")};
+const optsSummary=()=>`${LBL.mode[modeType()]} · ${opts.mode==="france"?t("m_france"):contN(opts.cont,CONTINENTS[opts.cont].nom)} · ${LBL.level[opts.level]} · ${LBL.chrono[opts.chrono]}${opts.players>1&&!special()?t("twop"):""}`;
 function showBest(){
   const solo=opts.players===1||special(), b=store.get(bestKey());
-  $("best").textContent=solo&&b?(opts.chrono===2?`🏆 record : ${b} bonnes réponses`:`🏆 record : ${fmt(+b)} pts`):"";
+  $("best").textContent=solo&&b?(opts.chrono===2?t("bestAns",b):t("bestPts",fmt(+b))):"";
   $("names").hidden=solo;
   document.querySelector('[data-k="players"]').classList.toggle("dim",special());
   // menu
   const played=!!store.get("geoose-last");
-  $("replaybtn").firstChild.textContent=played?"🔁 Rejouer comme la dernière fois":"▶ Jouer tout de suite";
+  $("replayt").textContent=played?t("replay"):t("playnow");
   $("replayn").textContent=optsSummary();
   const n=revItems().length;
   $("learnbtn").disabled=n===0;
-  $("learnn").textContent=n?`${n} à revoir`:"rien à revoir 🎉";
+  $("learnn").textContent=n?t("toreview",n):t("noreview");
   $("passn").textContent=`${C.filter(stamped).length}/${C.length}`;
   $("progn").textContent=`${Object.keys(getMedals()).length} 🏅`;
   const df=getDefi(), st=currentStreak(df);
   $("defibtn").classList.toggle("done",defiDoneToday(df));
-  $("defin").textContent=defiDoneToday(df)?`✅ fait aujourd'hui · 🔥 ${st}`:st?`5 questions · garde ta série 🔥 ${st}`:"5 questions · commence une série 🔥";
+  $("defin").textContent=defiDoneToday(df)?t("defiDone",st):st?t("defiKeep",st):t("defiStart");
   $("streaktag").textContent=`🔥 ${st}`;
   renderLevel();
 }
@@ -606,11 +608,11 @@ function showStep(i){
   wizStep=i;
   const fr=opts.mode==="france";
   $("conts").hidden=fr; $("frmodes").hidden=!fr;
-  $("wizwhere").textContent=fr?"Quoi en France ?":"Où veux-tu aller ?";
+  $("wizwhere").textContent=fr?t("w_wherefr"):t("w_where");
   document.querySelectorAll(".wizstep").forEach(s=>s.classList.toggle("on",+s.dataset.step===i));
   [...$("wizdots").children].forEach((d,k)=>{ d.className=k<i?"done":k===i?"cur":""; });
-  $("wizback").textContent=i===0?"‹ Menu":"‹ Retour";
-  $("wiznext").firstChild.textContent=i<3?"Suivant ›":"C'est parti ! 🚀";
+  $("wizback").textContent=i===0?t("w_menu"):t("w_back");
+  $("wiznextt").textContent=i<3?t("w_next"):t("w_go");
   $("wiznext").classList.toggle("go",i===3);
   showBest();
 }
@@ -656,7 +658,7 @@ function startGame(kind="normal"){
   const used=new Set();
   const list=learn?shuffle(revItems()).slice(0,ROUNDS):defi?defiQuestions():pickQuestions(modeType(),opts.level,opts.cont,survie?6:ROUNDS,used);
   if(!list.length){ goHome(); return; }
-  const np=learn||defi||survie||quiz?1:opts.players, names=[$("name1").value.trim()||"Joueur 1",$("name2").value.trim()||"Joueur 2"];
+  const np=learn||defi||survie||quiz?1:opts.players, names=[$("name1").value.trim()||t("p1"),$("name2").value.trim()||t("p2")];
   game={kind,learn,defi,survie,quiz,chrono:!learn&&!defi&&opts.chrono===1,n:survie?Infinity:list.length,list,used,i:0,
     view:learn||defi?"monde":opts.mode==="france"?"france":opts.cont,learned:0,stamps:[],medals:[],run:0,okCount:0,lives:3,t0Game:performance.now(),
     players:Array.from({length:np},(_,p)=>({name:np>1?names[p]:"",total:0,log:[]}))};
@@ -678,20 +680,20 @@ function nextRound(){
     const lv=Math.min(4,opts.level+Math.floor(game.okCount/5));
     game.list.push(...pickQuestions(modeType(),lv,opts.cont,5,game.used));
   }
-  $("rlabel").textContent=game.survie?`n°${game.i+1}`:`${game.learn?"📚 ":game.defi?"🗓️ ":""}${game.i+1}/${game.n}`;
+  $("rlabel").textContent=game.survie?t("num",game.i+1):`${game.learn?"📚 ":game.defi?"🗓️ ":""}${game.i+1}/${game.n}`;
   if(game.survie) $("dots").textContent=hearts();
   else [...$("dots").children].forEach((d,i)=>{d.className=i<game.i?"done":i===game.i?"cur":""});
   startTurn();
 }
 
-const QLABEL={pays:"Où se trouve le pays…",capitale:"Où se trouve la capitale…",drapeau:"Où se trouve le pays de ce drapeau ?",ville:"Où se trouve la ville…",monument:"Où se trouve…",ile:"Où se trouve l'île…",dept:"Où se trouve le département…",villefr:"Où se trouve la ville…"};
+const QLABEL=tt("q");
 // un tour = un joueur pose son oie (à deux : même question pour les deux, réponse révélée après le 2e)
 function startTurn(){
   const q=game.list[game.i];
   Object.assign(game,{guess:null,hint:false});
   const P=game.players[game.turn];
   $("turn").hidden=!duo();
-  if(duo()) $("turn").innerHTML=`<i style="background:${PCOL[game.turn]}"></i>${P.name}, à toi !`;
+  if(duo()) $("turn").innerHTML=`<i style="background:${PCOL[game.turn]}"></i>${esc(t("yourturn",P.name))}`;
   $("qcard").classList.remove("swap"); void $("qcard").offsetWidth; $("qcard").classList.add("swap");
   $("qhint").textContent="";
   setTarget(null); updateHover();
@@ -699,22 +701,22 @@ function startTurn(){
   $("qopts").hidden=!game.quiz;
   svg.classed("fr",FRTYPES.includes(q.type));
   if(game.quiz){ startQuiz(q); return; }
-  $("qlabel").textContent=q.type==="monument"&&q.mon.kind==="a"?"Où vivent…":QLABEL[q.type];
+  $("qlabel").textContent=q.type==="monument"&&q.mon.kind==="a"?QLABEL.animal:QLABEL[q.type];
   $("qname").textContent=q.type==="drapeau"?flag(q.c.a2):placeName(q);
   $("qname").classList.toggle("flagq",q.type==="drapeau");
-  $("hintbtn").textContent=q.type==="drapeau"?"💡 Voir le nom (points ÷ 2)":"💡 Indice (points ÷ 2)";
+  $("hintbtn").textContent=q.type==="drapeau"?t("hintflag"):t("hint");
   $("hintbtn").hidden=q.type==="pays";
-  setGo("Valider 🎯",true,false);
+  setGo(t("confirm"),true,false);
   svg.transition().duration(700).call(zoom.transform,homeView());
   $("tip").style.opacity=game.i<3&&game.turn===0?1:0;
   redrawOverlay();
-  if(voiceOn()) speakQuestion(duo()?`${P.name}, à toi ! `:"");
+  if(voiceOn()) speakQuestion(duo()?t("yourturn",P.name)+" ":"");
   if(game.chrono) startTimer();
 }
 function speakQuestion(prefix=""){
   if(!game) return;
   const q=game.list[game.i];
-  say(prefix+(q.type==="pays"?`Où se trouve ${nomAvecArticle(q.c)} ?`:q.type==="drapeau"?"À quel pays est ce drapeau ?":q.type==="monument"?`${q.mon.kind==="a"?"Où vivent":"Où se trouve"} ${q.mon.nom} ?`:q.type==="ile"?`Où se trouve ${q.isl.nom} ?`:q.type==="dept"?`Où se trouve le département ${q.dep.nom} ?`:`Où se trouve ${placeName(q)} ?`));
+  say(prefix+(q.type==="pays"?t("sayWhere",theC(q.c)):q.type==="drapeau"?t("sayFlag"):q.type==="monument"?(q.mon.kind==="a"?t("sayLive",monN(q.mon)):t("sayWhere",monN(q.mon))):q.type==="ile"?t("sayWhere",islN(q.isl)):q.type==="dept"?t("sayDept",q.dep.nom):t("sayWhere",placeName(q))));
 }
 $("qname").addEventListener("click",()=>{ if(voiceOn()&&!game?.quiz) speakQuestion(); });
 function setGo(txt,disabled,green){const b=$("go");b.textContent=txt;b.disabled=disabled;b.classList.toggle("green",green);}
@@ -729,8 +731,8 @@ function toast(txt){ const t=$("toast"); t.textContent=txt; t.classList.remove("
 // ---------- quiz (mode inversé) : la réponse est montrée sur la carte, on choisit parmi 4 ----------
 const optLabel=q=>q.type==="drapeau"?flag(q.c.a2):placeName(q);
 function startQuiz(q){
-  $("qlabel").textContent={pays:"Quel est ce pays ?",capitale:`Quelle est la capitale de ce pays ?`,drapeau:"Quel est le drapeau de ce pays ?",ville:"Quelle est cette ville ?",monument:q.mon?.kind==="a"?"Quel animal vit ici ?":"Qu'y a-t-il ici ?",ile:"Quelle est cette île ?",dept:"Quel est ce département ?",villefr:"Quelle est cette ville ?"}[q.type];
-  $("qname").textContent=q.type==="capitale"?`${flag(q.c.a2)} ${q.c.nom}`:"";
+  const QQ=tt("qq"); $("qlabel").textContent=q.type==="monument"&&q.mon?.kind==="a"?QQ.animal:QQ[q.type];
+  $("qname").textContent=q.type==="capitale"?`${flag(q.c.a2)} ${cn(q.c)}`:"";
   $("qname").classList.remove("flagq");
   $("hintbtn").hidden=true; $("tip").style.opacity=0;
   // 3 leurres du même type, du même continent si possible, de renommée proche
@@ -745,7 +747,7 @@ function startQuiz(q){
   game.qopts=shuffle(opts4.map(optLabel));
   $("qopts").innerHTML=game.qopts.map((l,i)=>`<button class="qopt${q.type==="drapeau"?" fl":""}" data-i="${i}">${esc(l)}</button>`).join("");
   $("qopts").classList.toggle("flags",q.type==="drapeau");
-  setGo("Choisis une réponse",true,false);
+  setGo(t("pick"),true,false);
   setTarget(q.type==="ile"||q.vfr?null:q.dep?q.dep.f:q.c.iso);
   game.target=targetOf(q);
   redrawOverlay();
@@ -794,7 +796,7 @@ function startTimer(){
   tick();
 }
 
-$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?`drapeau ${de(c)}${c.nom}`:q.type==="ville"?`ville située ${dans(c)}${c.nom}`:q.type==="monument"?`${dans(c)}${c.nom}`:q.type==="ile"?`elle appartient à ${nomAvecArticle(c)}`:q.dep?`préfecture : ${q.dep.pref}`:q.vfr?`dans le département ${deptByCode.get(q.vfr.dep).nom} (${q.vfr.dep})`:`capitale ${de(c)}${c.nom}`;};
+$("hintbtn").onclick=()=>{const q=game.list[game.i],c=q.c;game.hint=true;$("hintbtn").hidden=true;$("qhint").textContent=q.type==="drapeau"?t("hFlag",ofC(c)):q.type==="ville"?t("hCity",inC(c)):q.type==="monument"?t("hIn",inC(c)):q.type==="ile"?t("hIsl",theC(c)):q.dep?t("hPref",q.dep.pref):q.vfr?t("hDept",deptByCode.get(q.vfr.dep).nom,q.vfr.dep):t("hCap",ofC(c));};
 
 function placeGuess(cx,cy){
   if(!canPlay()) return;
@@ -833,7 +835,7 @@ function submitTurn(timeout){
   game.recs[game.turn]={guess:game.guess,hint:game.hint,left};
   if(game.turn+1<game.players.length){
     game.turn++;
-    toast(`Au tour de ${game.players[game.turn].name} ! 🙈`);
+    toast(t("turnOf",game.players[game.turn].name));
     startTurn();
   } else reveal();
 }
@@ -866,15 +868,15 @@ function scoreRec(rec,q){
   const bonus=Math.round(BONUS_MAX*(rec.left/CHRONO_S)*(pts/MAXPTS));
   return {km,pts,bonus,gained:pts+bonus,good,perfect,hint:rec.hint,dT};
 }
-const verdict=(r,q)=>r.quiz?(r.correct?"✅ Bravo !":"❌ Raté !"):r.km===null?"⏰ Temps écoulé !":r.perfect?"🪿 Atterrissage parfait !":r.good?(q?.type==="villefr"?"✅ Bon département !":q?.type==="ile"?"🏝️ Sur l'île !":"✅ Bon pays !"):r.pts>=850?"😮 Presque !":r.pts>=650?"🔥 Super !":r.pts>=400?"👍 Pas mal !":r.pts>=150?"🙂 Tu chauffes…":"🧊 Brrr, c'est loin !";
+const verdict=(r,q)=>{ const V=tt("v"); return r.quiz?(r.correct?V.quizok:V.quizko):r.km===null?V.time:r.perfect?V.perfect:r.good?(q?.type==="villefr"?V.gooddep:q?.type==="ile"?V.goodisl:V.good):r.pts>=850?V.p850:r.pts>=650?V.p650:r.pts>=400?V.p400:r.pts>=150?V.p150:V.far; };
 
 // médailles : annoncées une par une (toast + son), gardées pour l'écran de fin
 const giftsOf=m=>[...PLUMES,...ACCESSORIES].filter(x=>x.unlock?.medal===m.id);
 function celebrate(list){
   let k=0;
   list.forEach(m=>{ game.medals.push(m);
-    setTimeout(()=>{ toast(`🏅 ${m.e} ${m.nom} !`); sfx.stamp(); },1100+k++*1700);
-    giftsOf(m).forEach(g=>setTimeout(()=>{ toast(`🎁 Nouveau pour ton oie : ${g.e} ${g.nom}`); sfx.good(); },1100+k++*1700));
+    setTimeout(()=>{ toast(t("medalToast",`${m.e} ${medalN(m)}`)); sfx.stamp(); },1100+k++*1700);
+    giftsOf(m).forEach(g=>setTimeout(()=>{ toast(t("giftToast",`${g.e} ${g.slot?accN(g):plumeN(g)}`)); sfx.good(); },1100+k++*1700));
   });
 }
 function passportMedals(){
@@ -888,22 +890,22 @@ function passportMedals(){
 function reveal(){
   const q=game.list[game.i], c=q.c, f=byIso.get(c.iso), capPt=targetOf(q), name=placeName(q);
   const res=game.recs.map(r=>scoreRec(r,q));
-  res.forEach((r,p)=>{ const P=game.players[p]; P.total+=r.gained; P.log.push({label:q.mon?cap1(q.mon.nom):name,fl:q.mon?q.mon.e:flag(c.a2),pts:r.gained}); });
+  res.forEach((r,p)=>{ const P=game.players[p]; P.total+=r.gained; P.log.push({label:q.mon?cap1(monN(q.mon)):name,fl:q.mon?q.mon.e:flag(c.a2),pts:r.gained}); });
   Object.assign(game,{answered:true,target:capPt,results:res});
   $("turn").hidden=true;
 
-  // révisions + passeport + stats + médailles : pour le 1er joueur (Nils)
+  // révisions + passeport + stats + médailles : pour le 1er joueur (celui dont on suit la progression)
   // réussi : pays/drapeau à ≤ OK_KM de la frontière ; capitale/ville/merveille dans le bon pays ; quiz juste ; jamais avec l'indice
   const r0=res[0], pointQ=q.type==="capitale"||q.type==="ville"||q.type==="monument"||q.type==="ile"||q.type==="villefr";
   const ok=r0.quiz?r0.correct:r0.km!==null&&!r0.hint&&(pointQ||q.type==="dept"?r0.good:r0.km<=OK_KM), rk=revKey(q);
   let revMsg="", stampMsg="";
   if(ok){
-    if(revisions.delete(rk)){ game.learned++; revMsg="✅ Appris ! Retiré de tes révisions"; }
+    if(revisions.delete(rk)){ game.learned++; revMsg=t("learned"); }
     const st=addStamp(c,q.type);
-    if(st){ game.stamps.push(c); stampMsg=st===2?`🛂 Nouveau tampon : ${c.nom} !`:`🛂 Nouvelle étoile pour ${c.nom} !`; }
+    if(st){ game.stamps.push(c); stampMsg=st===2?t("newStamp",cn(c)):t("newStar",cn(c)); }
   }
-  else if(!revisions.has(rk)){ revisions.add(rk); revMsg="📚 Ajouté à tes révisions"; }
-  else if(game.learn) revMsg="📚 On le reverra !";
+  else if(!revisions.has(rk)){ revisions.add(rk); revMsg=t("added"); }
+  else if(game.learn) revMsg=t("again");
   saveRev();
   // statistiques : confusion = l'oie est tombée dans un autre pays (modes pays / drapeau)
   const g0=game.recs[0]?.guess, other=!ok&&g0&&(q.type==="pays"||q.type==="drapeau")?countryAt(g0):null;
@@ -925,39 +927,39 @@ function reveal(){
   setTarget(q.type==="ile"?null:FRTYPES.includes(q.type)?frF(q):c.iso); updateHover();
   if(!game.survie) [...$("dots").children][game.i].className="done";
   $("rflag").textContent=q.type==="monument"?q.mon.e:q.type==="ile"?q.isl.e:flag(c.a2);
-  const where=`${dans(c)}${c.nom}`;
-  const what=q.dep?`${name}, préfecture : ${q.dep.pref}`:q.vfr?`${name}, dans le département ${deptByCode.get(q.vfr.dep).nom} (${q.vfr.dep})`:q.type==="capitale"?`${c.cap}, capitale ${de(c)}${c.nom}`:pointQ?`${name}, ${where}`:`${c.nom} · capitale : ${c.cap}`;
+  const where=inC(c), vdep=q.vfr&&deptByCode.get(q.vfr.dep).nom;
+  const what=q.dep?t("whatDept",name,q.dep.pref):q.vfr?t("whatVfr",name,vdep,q.vfr.dep):q.type==="capitale"?t("whatCap",ccap(c),ofC(c)):pointQ?t("whatAt",name,where):t("whatC",cn(c),ccap(c));
   if(!duo()){
     const r=r0;
     $("rmsg").textContent=verdict(r,q);
-    countUp($("rpts"),r.gained,"+"," pts");
-    $("rbonus").textContent=[r.bonus?`⚡ dont +${r.bonus} bonus vitesse`:(r.hint&&r.km!==null?"💡 indice utilisé : points ÷ 2":""),game.survie&&!ok?`💔 une vie en moins (${hearts()})`:"",stampMsg||revMsg].filter(Boolean).join(" · ");
-    const whatArt=pointQ?what:`${nomAvecArticle(c)} · capitale : ${c.cap}`;
-    $("rdetail").textContent = r.quiz ? (r.correct?`C'est bien ${whatArt} !`:`C'était ${whatArt}`)
-      : r.km===null ? `C'était ici : ${what}`
-      : q.type==="dept" ? (r.good?`Ton oie s'est posée dans le département ${name} ! Préfecture : ${q.dep.pref}`:`À ${fmt(r.km)} km du département ${name} · préfecture : ${q.dep.pref}`)
-      : !pointQ ? (r.km===0?`Ton oie s'est posée ${where} ! Capitale : ${c.cap}`:(f?`À ${fmt(r.km)} km de la frontière · capitale : ${c.cap}`:`À ${fmt(r.km)} km de ${c.cap}, capitale ${de(c)}${c.nom}`))
-      : q.type==="villefr" ? (r.perfect?`Tu as trouvé ${name} !`:r.good?`Ton oie est bien dans le département ${deptByCode.get(q.vfr.dep).nom} 👍 ${name} est à ${fmt(r.dT)} km`:`${name} est dans le département ${deptByCode.get(q.vfr.dep).nom} (${q.vfr.dep}) : ton oie est à ${fmt(r.km)} km`)
-      : q.type==="ile" ? (r.perfect?`Tu as trouvé ${what} !`:r.good?`Ton oie est bien sur l'île 👍 ${name} ${dans(c)}${c.nom}`:`${name} est ${where} : ton oie est à ${fmt(r.km)} km de l'île`)
-      : r.perfect ? `Tu as trouvé ${what} !`
-      : r.good ? `Ton oie est bien ${where} 👍 ${name} est à ${fmt(r.dT)} km`
-      : `${name} : ${where}, ton oie est à ${fmt(r.km)} km de la frontière`;
+    countUp($("rpts"),r.gained,"+",t("pts"));
+    $("rbonus").textContent=[r.bonus?t("speed",r.bonus):(r.hint&&r.km!==null?t("hintUsed"):""),game.survie&&!ok?t("lifeLost",hearts()):"",stampMsg||revMsg].filter(Boolean).join(" · ");
+    const whatArt=pointQ||q.dep?what:t("whatC",theC(c),ccap(c));
+    $("rdetail").textContent = r.quiz ? (r.correct?t("isright",whatArt):t("wasit",whatArt))
+      : r.km===null ? t("washere",what)
+      : q.type==="dept" ? (r.good?t("dGood",name,q.dep.pref):t("dFar",fmt(r.km),name,q.dep.pref))
+      : !pointQ ? (r.km===0?t("cIn",where,ccap(c)):(f?t("cBorder",fmt(r.km),ccap(c)):t("cFromCap",fmt(r.km),ccap(c),ofC(c))))
+      : q.type==="villefr" ? (r.perfect?t("found",name):r.good?t("vfrGood",vdep,name,fmt(r.dT)):t("vfrFar",name,vdep,q.vfr.dep,fmt(r.km)))
+      : q.type==="ile" ? (r.perfect?t("found",what):r.good?t("islGood",name,where):t("islFar",name,where,fmt(r.km)))
+      : r.perfect ? t("found",what)
+      : r.good ? t("ptGood",where,name,fmt(r.dT))
+      : t("ptFar",name,where,fmt(r.km));
   } else {
     const [a,b]=res, P=game.players;
-    $("rmsg").textContent=a.gained===b.gained?(a.km===null?"⏰ Personne n'a joué !":"🤝 Égalité !"):`🏆 ${P[a.gained>b.gained?0:1].name} gagne la manche !`;
-    $("rpts").innerHTML=res.map((r,p)=>`<span class="duo"><i class="pdot" style="background:${PCOL[p]}"></i>${P[p].name} <b>+${fmt(r.gained)}</b></span>`).join("");
-    $("rbonus").textContent=[res.map((r,p)=>`${P[p].name} : ${r.km===null?"pas joué":r.perfect?"pile dessus !":r.good?"bon pays":fmt(r.km)+" km"}`).join(" · "),stampMsg].filter(Boolean).join(" · ");
+    $("rmsg").textContent=a.gained===b.gained?(a.km===null?t("nobody"):t("tie")):t("winsRound",P[a.gained>b.gained?0:1].name);
+    $("rpts").innerHTML=res.map((r,p)=>`<span class="duo"><i class="pdot" style="background:${PCOL[p]}"></i>${esc(P[p].name)} <b>+${fmt(r.gained)}</b></span>`).join("");
+    $("rbonus").textContent=[res.map((r,p)=>`${P[p].name}: ${r.km===null?t("notplayed"):r.perfect?t("spoton"):r.good?t("goodC"):fmt(r.km)+" km"}`).join(" · "),stampMsg].filter(Boolean).join(" · ");
     $("rdetail").textContent=what;
   }
   $("rstamp").innerHTML=stampMsg?stampSVG(c):"";
-  const fact=q.isl?q.isl.fact:q.dep?`La préfecture du département ${q.dep.nom} (${q.dep.code}) est ${q.dep.pref}.`
-    :q.vfr?(q.vfr.fact||`${q.vfr.nom} se trouve dans le département ${deptByCode.get(q.vfr.dep).nom} (${q.vfr.dep}).`):FACTS[c.a2];
+  const fact=q.isl?islFact(q.isl):q.dep?t("factDept",q.dep.nom,q.dep.code,q.dep.pref)
+    :q.vfr?(vfrFact(q.vfr)||t("factVfr",name,vdep,q.vfr.dep)):factOf(c,FACTS);
   $("rfacttxt").textContent=fact||"";
   $("rfact").hidden=!fact;
   $("result").classList.add("show");
   setScore();
   const last=game.survie?game.lives<=0:game.i+1>=game.n;
-  setGo(last?"Voir le score 🏁":"Suivant ➜",false,true);
+  setGo(last?t("seescore"):t("next"),false,true);
   // son + confettis selon la meilleure oie
   const best=res.reduce((m,r)=>r.gained>m.gained?r:m,res[0]);
   if(res.some(r=>r.perfect)){ sfx.perfect(); confetti(60); }
@@ -983,7 +985,7 @@ function reveal(){
   game.cardPos={above:sy+18>view.bottom&&sy-18-card.h>view.top, dx:Math.max(8+card.w/2-sx,Math.min(0,right-card.w/2-sx))};
   redrawOverlay();
 }
-$("rfactsay").onclick=()=>say("Le savais-tu ? "+$("rfacttxt").textContent);
+$("rfactsay").onclick=()=>say(t("didyouknowSay")+$("rfacttxt").textContent);
 
 function countUp(el,to,pre,suf,from=0){
   const t0=performance.now(),d=700;
@@ -1009,12 +1011,14 @@ function drawGoose(ll,p,{hit=false,tag="",flip=false}={}){
 }
 // fiche affichée sur la carte après chaque réponse : drapeau + pays + capitale (+ ville / merveille), pour mémoriser
 function cardOf(q){
-  const lines=q.dep?[`🇫🇷 ${q.dep.nom} (${q.dep.code})`,`🏛️ ${q.dep.pref}`]
-    :q.vfr?[`🏙️ ${q.vfr.nom}`,`🇫🇷 ${deptByCode.get(q.vfr.dep).nom} (${q.vfr.dep})`]
-    :q.type==="ile"?[islTitle(q.isl),`${flag(q.c.a2)} ${q.c.nom}`]:[...(q.type==="ville"?[`🏙️ ${q.city.nom}`]:q.type==="monument"?[monTitle(q.mon)]:[]),
-    q.type==="capitale"?`🏛️ ${q.c.cap}`:`${flag(q.c.a2)} ${q.c.nom}`,
-    q.type==="capitale"?`${flag(q.c.a2)} ${q.c.nom}`:`🏛️ ${q.c.cap}`];
-  const LH=24; return {lines,LH,h:lines.length*LH+10,w:Math.max(...lines.map(l=>[...l].length))*8.8+40};
+  const c=q.c, lines=q.dep?[`🇫🇷 ${q.dep.nom} (${q.dep.code})`,`🏛️ ${q.dep.pref}`]
+    :q.vfr?[`🏙️ ${vfrN(q.vfr)}`,`🇫🇷 ${deptByCode.get(q.vfr.dep).nom} (${q.vfr.dep})`]
+    :q.type==="ile"?[islTitle(q.isl),`${flag(c.a2)} ${cn(c)}`]:[...(q.type==="ville"?[`🏙️ ${cityN(q.city)}`]:q.type==="monument"?[monTitle(q.mon)]:[]),
+    q.type==="capitale"?`🏛️ ${ccap(c)}`:`${flag(c.a2)} ${cn(c)}`,
+    q.type==="capitale"?`${flag(c.a2)} ${cn(c)}`:`🏛️ ${ccap(c)}`];
+  // largeur : les caractères chinois sont environ deux fois plus larges
+  const wd=l=>[...l].reduce((a,ch)=>a+(/[\u3000-\u9fff\uff00-\uffef]/.test(ch)?1.9:1),0);
+  const LH=24; return {lines,LH,h:lines.length*LH+10,w:Math.max(...lines.map(wd))*8.8+40};
 }
 function drawTarget(withLabel,ring){
   const q=game.list[game.i];
@@ -1061,40 +1065,40 @@ function endGame(){
   const P=game.players, max=(game.survie?game.i:game.n)*(MAXPTS+(game.chrono?BONUS_MAX:0));
   addPlayTime((performance.now()-game.t0Game)/1000);
   $("duel").hidden=!duo(); $("final").hidden=duo(); $("stars").hidden=duo();
-  $("outof").textContent=game.survie?"bonnes réponses en Survie":`points sur ${fmt(max)}`;
+  $("outof").textContent=game.survie?t("survOut"):t("ptsOut",fmt(max));
   let n=0, extra="";
   const ids=["envol"];
   if(duo()){
     const [a,b]=P;
-    $("endtitle").textContent=a.total===b.total?"🤝 Égalité !":`🏆 ${(a.total>b.total?a:b).name} gagne !`;
-    $("duel").innerHTML=P.map((p,i)=>`<div class="dscore${p.total>=Math.max(a.total,b.total)?" win":""}"><span><i class="pdot" style="background:${PCOL[i]}"></i>${p.name}</span><b>${fmt(p.total)}</b></div>`).join("");
+    $("endtitle").textContent=a.total===b.total?t("tie"):t("wins",(a.total>b.total?a:b).name);
+    $("duel").innerHTML=P.map((p,i)=>`<div class="dscore${p.total>=Math.max(a.total,b.total)?" win":""}"><span><i class="pdot" style="background:${PCOL[i]}"></i>${esc(p.name)}</span><b>${fmt(p.total)}</b></div>`).join("");
     const mx=Math.max(...a.log.map(l=>l.pts),...b.log.map(l=>l.pts),1);
     $("recap").innerHTML=a.log.map((l,i)=>`<div><span>${l.fl} ${l.label}</span><span class="r2">${[l.pts,b.log[i].pts].map((v,p)=>`<i class="bar" style="width:${Math.round(40*v/mx)}px;background:${PCOL[p]}"></i><b>${fmt(v)}</b>`).join("")}</span></div>`).join("");
     n=5; ids.push("duo");
   } else {
-    const t=P[0].total, okc=game.okCount;
+    const tot=P[0].total, okc=game.okCount;
     if(game.survie){
       $("final").textContent="0"; countUp($("final"),okc,"","");
       n=okc>=30?5:okc>=20?4:okc>=12?3:okc>=6?2:okc>=3?1:0;
-      $("endtitle").textContent=["Encore un essai ! 💪","Bien tenu ! 🙂","Joli parcours ! 👍","Survivant ! 🔥","Increvable ! 🏆","Légende de la survie ! 🌟"][n];
+      $("endtitle").textContent=tt("survT")[n];
       const prev=+(store.get(bestKey())||0);
-      if(okc>prev){ store.set(bestKey(),okc); extra=prev?"🏆 Nouveau record !":"🏆 Premier record !"; } else extra=prev?`Record : ${prev}`:"Tu feras mieux la prochaine fois !";
+      if(okc>prev){ store.set(bestKey(),okc); extra=prev?t("newRec"):t("firstRec"); } else extra=prev?t("rec",prev):t("better");
     } else {
-      $("final").textContent="0"; countUp($("final"),t,"","");
-      const r=t/max; n=r>=.85?5:r>=.7?4:r>=.5?3:r>=.3?2:r>=.15?1:0;
-      $("endtitle").textContent=game.defi?"🗓️ Défi du jour terminé !":["On s'entraîne encore ! 💪","Bon début ! 🙂","Pas mal du tout ! 👍","Très fort ! 🔥","Champion ! 🏆","Légende de la géo ! 🌟"][n];
+      $("final").textContent="0"; countUp($("final"),tot,"","");
+      const r=tot/max; n=r>=.85?5:r>=.7?4:r>=.5?3:r>=.3?2:r>=.15?1:0;
+      $("endtitle").textContent=game.defi?t("defiT"):tt("normT")[n];
       if(game.learn){
         const left=revItems().length;
-        extra=(game.learned?`✅ ${game.learned} appris · `:"")+(left?`📚 encore ${left} à revoir`:"🎉 Plus rien à revoir !");
+        extra=(game.learned?t("learnedN",game.learned):"")+(left?t("stillRev",left):t("noneRev"));
       } else if(game.defi){
-        const was=defiDoneToday(), d=finishDefi(t);
-        extra=was?`Déjà fait aujourd'hui · 🔥 ${d.streak} jour${d.streak>1?"s":""}`:`🔥 ${d.streak} jour${d.streak>1?"s":""} d'affilée ! Reviens demain`;
+        const was=defiDoneToday(), d=finishDefi(tot);
+        extra=was?t("defiAlready",d.streak):t("defiStreak",d.streak);
         if(d.streak>=3) ids.push("defi3"); if(d.streak>=7) ids.push("defi7"); if(d.streak>=30) ids.push("defi30");
       } else {
         const prev=+(store.get(bestKey())||0);
-        if(t>prev){store.set(bestKey(),t);extra=prev?"🏆 Nouveau record !":"🏆 Premier record !";} else extra=`Record : ${fmt(prev)}`;
+        if(tot>prev){store.set(bestKey(),tot);extra=prev?t("newRec"):t("firstRec");} else extra=t("rec",fmt(prev));
         if(game.n===ROUNDS&&okc===ROUNDS) ids.push(game.quiz?"quiz":"sansfaute");
-        if(opts.level===4&&game.n===ROUNDS&&!game.quiz&&t>=7000) ids.push("dragon");
+        if(opts.level===4&&game.n===ROUNDS&&!game.quiz&&tot>=7000) ids.push("dragon");
       }
     }
     $("stars").innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<n?"on":""}" style="animation-delay:${.3+i*.15}s">★</i>`).join("");
@@ -1110,15 +1114,15 @@ function endGame(){
   const unlocked=[...PLUMES,...ACCESSORIES].filter(a=>(a.unlock?.lvl>lv.before&&a.unlock.lvl<=lv.after)||(a.unlock?.medal&&game.medals.some(m=>m.id===a.unlock.medal)));
   const L=levelInfo();
   $("xpline").innerHTML=lv.after>lv.before
-    ? `<b>⬆️ Niveau ${lv.after} !</b>`
-    : `+${xp} XP · niveau ${L.lvl} <span class="xpbar"><i style="width:${Math.round(100*L.cur/L.need)}%"></i></span>`;
-  if(unlocked.length) $("xpline").innerHTML+=`<div class="gifts">🎁 Nouveau pour ton oie : ${unlocked.map(a=>`${a.e} ${a.nom}`).join(", ")}</div>`;
-  $("endmedals").innerHTML=game.medals.length?`🏅 ${game.medals.map(m=>`<span title="${m.nom}">${m.e}</span>`).join(" ")} <small>${game.medals.map(m=>m.nom).join(" · ")}</small>`:"";
-  $("newstamps").innerHTML=game.stamps.length?`🛂 ${game.stamps.length} nouveau${game.stamps.length>1?"x":""} tampon${game.stamps.length>1?"s":""} : <span>${game.stamps.map(c=>flag(c.a2)).join(" ")}</span>`:"";
+    ? `<b>${t("lvlUp",lv.after)}</b>`
+    : `${t("xpGain",xp,L.lvl)} <span class="xpbar"><i style="width:${Math.round(100*L.cur/L.need)}%"></i></span>`;
+  if(unlocked.length) $("xpline").innerHTML+=`<div class="gifts">${t("newForGoose",unlocked.map(a=>`${a.e} ${a.slot?accN(a):plumeN(a)}`).join(", "))}</div>`;
+  $("endmedals").innerHTML=game.medals.length?`🏅 ${game.medals.map(m=>`<span title="${esc(medalN(m))}">${m.e}</span>`).join(" ")} <small>${game.medals.map(m=>esc(medalN(m))).join(" · ")}</small>`:"";
+  $("newstamps").innerHTML=game.stamps.length?`${t("stampsN",game.stamps.length)} <span>${game.stamps.map(c=>flag(c.a2)).join(" ")}</span>`:"";
   // l'oie danse quand c'est réussi (ou quand on monte de niveau)
   const party=n>=3||lv.after>lv.before;
   $("endgoose").innerHTML=gooseSVG(equip,party?"dance":"idle");
-  $("againbtn").textContent=game.learn?(revItems().length?"Continuer à réviser 📚":"Menu 🏠"):game.defi?"Refaire le défi 🔁":"Rejouer 🔁";
+  $("againbtn").textContent=game.learn?(revItems().length?t("keepRev"):t("menuH")):game.defi?t("redoDefi"):t("againB");
   $("end").classList.remove("hidden");
   if(party){ setTimeout(()=>{confetti(140); sfx.fanfare();},400); }
   renderLevel();
@@ -1141,7 +1145,7 @@ function goHome(){
   svg.classed("fr",false);
   cancelAnimationFrame(timerRAF); try{speechSynthesis.cancel();}catch(e){}
   game=null; endDrag(); updateHover(); redrawOverlay(); setTarget(null);
-  $("result").classList.remove("show"); setGo("Valider 🎯",true,false); $("qopts").hidden=true;
+  $("result").classList.remove("show"); setGo(t("confirm"),true,false); $("qopts").hidden=true;
   $("end").classList.add("hidden"); document.body.classList.remove("ingame","wiz");
   openTab("jouer");
   svg.transition().duration(700).call(zoom.transform,homeView());

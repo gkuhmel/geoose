@@ -1,3 +1,4 @@
+import { speechLang } from "./i18n.js";
 // Sons (synthétisés en WebAudio : aucun fichier, marche hors ligne) et voix (synthèse vocale de l'appareil).
 // iOS : l'audio ne démarre qu'après un geste de l'utilisateur → `unlock()` au premier toucher.
 const KEY = "geoose-son";
@@ -92,7 +93,7 @@ export function say(text) {
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "fr-FR"; if (voice) u.voice = voice;
+    u.lang = speechLang(); if (voice) u.voice = voice;
     u.rate = .92; u.pitch = 1.05;
     speechSynthesis.speak(u);
   } catch (e) {}

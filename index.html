@@ -21,24 +21,24 @@
 <div id="hud">
   <div id="topbar">
     <div class="tbleft">
-      <button id="homebtn" class="glass round" aria-label="Menu">🏠</button>
-      <button id="soundbtn" class="glass round sound" aria-label="Son">🔊</button>
+      <button id="homebtn" class="glass round" aria-label="Menu" data-i18n-aria="a_menu">🏠</button>
+      <button id="soundbtn" class="glass round sound" aria-label="Son" data-i18n-aria="a_sound">🔊</button>
     </div>
     <div class="pill glass"><span id="rlabel">1/10</span><span id="dots"></span></div>
     <div class="pill glass" id="score"><span id="clock">⏱️ 15</span> <span id="scoreval">⭐ 0</span></div>
   </div>
   <div id="qcard" class="glass">
     <div id="turn" hidden></div>
-    <div id="qlabel">Trouve le pays</div>
-    <div id="qname" title="Toucher pour réécouter">…</div>
+    <div id="qlabel"></div>
+    <div id="qname" title="Toucher pour réécouter" data-i18n-title="a_relisten">…</div>
     <div id="qhint"></div>
-    <button id="hintbtn" hidden>💡 Indice (points ÷ 2)</button>
+    <button id="hintbtn" hidden></button>
     <div id="qopts" hidden></div>
     <div id="timer"></div>
   </div>
 </div>
 
-<div id="tip">👆 Touche la carte pour poser l'oie · fais-la glisser pour viser juste</div>
+<div id="tip" data-i18n="tip"></div>
 <div id="toast"></div>
 
 <div id="zoombtns">
@@ -54,16 +54,16 @@
     <div id="rpts"></div>
     <div id="rbonus"></div>
     <div id="rdetail"></div>
-    <div id="rfact"><b>💡 Le savais-tu ?</b> <span id="rfacttxt"></span> <button id="rfactsay" class="say" aria-label="Écouter">🔊</button></div>
+    <div id="rfact"><b data-i18n="didyouknow"></b> <span id="rfacttxt"></span> <button id="rfactsay" class="say" aria-label="Écouter" data-i18n-aria="a_listen">🔊</button></div>
   </div>
-  <button class="btn" id="go" disabled>Valider 🎯</button>
+  <button class="btn" id="go" disabled data-i18n="confirm"></button>
 </div>
 
 <div class="screen" id="splash">
   <div class="splashwrap">
     <div class="globewrap"><canvas id="globe"></canvas><div class="orbit"><div class="orbiter" id="splashgoose"></div></div></div>
     <div class="logo">Ge<span>oo</span>se</div>
-    <div class="splashsub">Fais atterrir l'oie au bon endroit !</div>
+    <div class="splashsub" data-i18n="splashsub"></div>
   </div>
 </div>
 
@@ -71,102 +71,103 @@
   <div class="homewrap">
     <div class="hhead">
       <div id="brandgoose"></div>
-      <div class="hhello"><b>Prêt pour le voyage ?</b><span><span class="lvlbadge" id="lvlbadge"></span><span class="tag" id="streaktag"></span></span></div>
-      <button class="glass round" id="setbtn" aria-label="Réglages">⚙️</button>
+      <div class="hhello"><b data-i18n="hello"></b><span><span class="lvlbadge" id="lvlbadge"></span><span class="tag" id="streaktag"></span></span></div>
+      <button class="glass round" id="setbtn" aria-label="Réglages" data-i18n-aria="a_settings">⚙️</button>
     </div>
-    <button class="big b-replay" id="replaybtn">🔁 Rejouer comme la dernière fois<small id="replayn"></small></button>
-    <button class="big b-new" id="newbtn">🧭 Nouvelle partie<small>je choisis pas à pas</small></button>
-    <button class="big b-defi" id="defibtn">🗓️ Défi du jour<small id="defin"></small></button>
-    <button class="big b-rev" id="learnbtn">📚 Réviser mes erreurs<small id="learnn"></small></button>
+    <button class="big b-replay" id="replaybtn"><span id="replayt"></span><small id="replayn"></small></button>
+    <button class="big b-new" id="newbtn"><span data-i18n="newgame"></span><small data-i18n="newgame_s"></small></button>
+    <button class="big b-defi" id="defibtn"><span data-i18n="defi"></span><small id="defin"></small></button>
+    <button class="big b-rev" id="learnbtn"><span data-i18n="review"></span><small id="learnn"></small></button>
   </div>
 </div>
 
 <div class="screen hidden" id="wizard">
   <div class="wizwrap">
     <div class="wizdots" id="wizdots"><i></i><i></i><i></i><i></i></div>
-    <div class="wizstep" data-step="0"><h2>Que veux-tu trouver ?</h2>
+    <div class="wizstep" data-step="0"><h2 data-i18n="w_what"></h2>
       <div class="choices bigch three" data-k="mode">
-        <button class="choice on" data-v="pays"><span class="e">🗺️</span>Pays<small>197 pays</small></button><button class="choice" data-v="capitale"><span class="e">🏛️</span>Capitales<small>Paris, Tokyo…</small></button><button class="choice" data-v="drapeau"><span class="e">🚩</span>Drapeaux<small>devine le pays</small></button>
-        <button class="choice" data-v="ville"><span class="e">🏙️</span>Villes<small>New York, Rio…</small></button><button class="choice" data-v="monument"><span class="e">🗿</span>Merveilles<small>monuments, animaux</small></button><button class="choice" data-v="ile"><span class="e">🏝️</span>Îles<small>Corse, Galápagos…</small></button><button class="choice" data-v="france"><span class="e">🇫🇷</span>France<small>départements, villes</small></button><button class="choice" data-v="mix"><span class="e">🎲</span>Mélange<small>un peu de tout</small></button>
+        <button class="choice on" data-v="pays"><span class="e">🗺️</span><span data-i18n="m_pays"></span><small data-i18n="m_pays_s"></small></button><button class="choice" data-v="capitale"><span class="e">🏛️</span><span data-i18n="m_capitale"></span><small data-i18n="m_capitale_s"></small></button><button class="choice" data-v="drapeau"><span class="e">🚩</span><span data-i18n="m_drapeau"></span><small data-i18n="m_drapeau_s"></small></button>
+        <button class="choice" data-v="ville"><span class="e">🏙️</span><span data-i18n="m_ville"></span><small data-i18n="m_ville_s"></small></button><button class="choice" data-v="monument"><span class="e">🗿</span><span data-i18n="m_monument"></span><small data-i18n="m_monument_s"></small></button><button class="choice" data-v="ile"><span class="e">🏝️</span><span data-i18n="m_ile"></span><small data-i18n="m_ile_s"></small></button><button class="choice" data-v="france"><span class="e">🇫🇷</span><span data-i18n="m_france"></span><small data-i18n="m_france_s"></small></button><button class="choice" data-v="mix"><span class="e">🎲</span><span data-i18n="m_mix"></span><small data-i18n="m_mix_s"></small></button>
       </div></div>
-    <div class="wizstep" data-step="1"><h2 id="wizwhere">Où veux-tu aller ?</h2>
+    <div class="wizstep" data-step="1"><h2 id="wizwhere"></h2>
       <div class="choices bigch" data-k="cont" id="conts"></div>
       <div class="choices bigch" data-k="frmode" id="frmodes" hidden>
-        <button class="choice on" data-v="dept"><span class="e">🗺️</span>Départements<small>les 96 de métropole</small></button>
-        <button class="choice" data-v="villefr"><span class="e">🏙️</span>Villes de France<small>Paris, Brest, Nice…</small></button>
+        <button class="choice on" data-v="dept"><span class="e">🗺️</span><span data-i18n="m_dept"></span><small data-i18n="m_dept_s"></small></button>
+        <button class="choice" data-v="villefr"><span class="e">🏙️</span><span data-i18n="m_villefr"></span><small data-i18n="m_villefr_s"></small></button>
       </div></div>
-    <div class="wizstep" data-step="2"><h2>Quel niveau ?</h2>
+    <div class="wizstep" data-step="2"><h2 data-i18n="w_level"></h2>
       <div class="choices bigch" data-k="level">
-        <button class="choice on" data-v="1"><span class="e">🐣</span>Facile<small>les plus célèbres</small></button><button class="choice" data-v="2"><span class="e">🦊</span>Moyen<small>assez connus</small></button><button class="choice" data-v="3"><span class="e">🦅</span>Difficile<small>moins connus</small></button><button class="choice" data-v="4"><span class="e">🐉</span>Expert<small>les raretés</small></button>
+        <button class="choice on" data-v="1"><span class="e">🐣</span><span data-i18n="l1"></span><small data-i18n="l1_s"></small></button><button class="choice" data-v="2"><span class="e">🦊</span><span data-i18n="l2"></span><small data-i18n="l2_s"></small></button><button class="choice" data-v="3"><span class="e">🦅</span><span data-i18n="l3"></span><small data-i18n="l3_s"></small></button><button class="choice" data-v="4"><span class="e">🐉</span><span data-i18n="l4"></span><small data-i18n="l4_s"></small></button>
       </div></div>
-    <div class="wizstep" data-step="3"><h2>Comment on joue ?</h2>
+    <div class="wizstep" data-step="3"><h2 data-i18n="w_how"></h2>
       <div class="choices bigch" data-k="chrono">
-        <button class="choice on" data-v="0"><span class="e">🧭</span>Calme<small>prends ton temps</small></button><button class="choice" data-v="1"><span class="e">⏱️</span>Chrono<small>15 s par question</small></button><button class="choice" data-v="2"><span class="e">❤️</span>Survie<small>3 vies, jusqu'où ?</small></button><button class="choice" data-v="3"><span class="e">🔤</span>Quiz<small>choisis parmi 4</small></button>
+        <button class="choice on" data-v="0"><span class="e">🧭</span><span data-i18n="c0"></span><small data-i18n="c0_s"></small></button><button class="choice" data-v="1"><span class="e">⏱️</span><span data-i18n="c1"></span><small data-i18n="c1_s"></small></button><button class="choice" data-v="2"><span class="e">❤️</span><span data-i18n="c2"></span><small data-i18n="c2_s"></small></button><button class="choice" data-v="3"><span class="e">🔤</span><span data-i18n="c3"></span><small data-i18n="c3_s"></small></button>
       </div>
       <div class="choices inline" data-k="players">
-        <button class="choice on" data-v="1"><span class="e">🙂</span>Seul</button>
-        <button class="choice" data-v="2"><span class="e">👥</span>À deux</button>
+        <button class="choice on" data-v="1"><span class="e">🙂</span><span data-i18n="solo"></span></button>
+        <button class="choice" data-v="2"><span class="e">👥</span><span data-i18n="duo"></span></button>
       </div>
       <div id="names" hidden>
         <label class="name p1"><span>🪿</span><input id="name1" maxlength="12" autocomplete="off" spellcheck="false"></label>
         <label class="name p2"><span>🪿</span><input id="name2" maxlength="12" autocomplete="off" spellcheck="false"></label>
       </div>
     </div>
-    <div class="wiznav"><button class="btn ghost" id="wizback">‹ Retour</button><button class="btn" id="wiznext">Suivant ›<small id="best"></small></button></div>
+    <div class="wiznav"><button class="btn ghost" id="wizback"></button><button class="btn" id="wiznext"><span id="wiznextt"></span><small id="best"></small></button></div>
   </div>
 </div>
 
 <nav id="tabbar">
-  <button data-tab="jouer" class="on"><b>🎮</b>Jouer</button>
-  <button data-tab="passport"><b>🛂</b>Passeport<small id="passn"></small></button>
-  <button data-tab="progres"><b>🏆</b>Progrès<small id="progn"></small></button>
-  <button data-tab="oie"><b>🪿</b>Mon oie</button>
+  <button data-tab="jouer" class="on"><b>🎮</b><span data-i18n="t_play"></span></button>
+  <button data-tab="passport"><b>🛂</b><span data-i18n="t_pass"></span><small id="passn"></small></button>
+  <button data-tab="progres"><b>🏆</b><span data-i18n="t_prog"></span><small id="progn"></small></button>
+  <button data-tab="oie"><b>🪿</b><span data-i18n="t_oie"></span></button>
 </nav>
 
 <div class="screen hidden" id="oie">
   <div class="panel glass sheet">
-    <div class="passhead"><div class="ptitle">🪿 Mon oie</div><button class="glass round" id="oieclose" aria-label="Fermer">✕</button></div>
+    <div class="passhead"><div class="ptitle" data-i18n="oie_title"></div><button class="glass round" id="oieclose" aria-label="Fermer" data-i18n-aria="a_close">✕</button></div>
     <div class="oietop"><div id="oiepreview"></div><div id="oielvl"></div></div>
-    <p class="hintline">Gagne de l'XP en jouant pour débloquer des accessoires. Touche-les pour les mettre ou les enlever.</p>
+    <p class="hintline" data-i18n="oie_hint"></p>
     <div id="oiegrid"></div>
   </div>
 </div>
 
 <div class="screen hidden" id="progres">
   <div class="panel glass sheet passpanel">
-    <div class="passhead"><div class="ptitle">🏆 Progrès</div><button class="glass round" id="progclose" aria-label="Fermer">✕</button></div>
-    <div class="ptabs" id="progtabs"><button class="ptab on" data-k="medailles">🏅 Médailles</button><button class="ptab" data-k="stats">📊 Tableau de bord</button></div>
+    <div class="passhead"><div class="ptitle" data-i18n="prog_title"></div><button class="glass round" id="progclose" aria-label="Fermer" data-i18n-aria="a_close">✕</button></div>
+    <div class="ptabs" id="progtabs"><button class="ptab on" data-k="medailles" data-i18n="medals_tab"></button><button class="ptab" data-k="stats" data-i18n="dash_tab"></button></div>
     <div id="progbody"></div>
   </div>
 </div>
 
 <div class="screen hidden" id="reglages">
   <div class="panel glass sheet">
-    <div class="passhead"><div class="ptitle">⚙️ Réglages</div><button class="glass round" id="setclose" aria-label="Fermer">✕</button></div>
-    <div class="setrow"><span>Sons et bruitages</span><button class="tool sq sound" aria-label="Sons">🔊<small>Sons</small></button></div>
-    <div class="setrow"><span>Lire les questions à voix haute</span><button class="tool sq voice" aria-label="Voix">🗣️<small>Voix</small></button></div>
-    <div class="group"><h3>Thème</h3>
+    <div class="passhead"><div class="ptitle" data-i18n="set_title"></div><button class="glass round" id="setclose" aria-label="Fermer" data-i18n-aria="a_close">✕</button></div>
+    <div class="setrow"><span data-i18n="set_sound"></span><button class="tool sq sound" aria-label="Sons" data-i18n-aria="a_sound">🔊<small data-i18n="sounds"></small></button></div>
+    <div class="setrow"><span data-i18n="set_voice"></span><button class="tool sq voice" aria-label="Voix" data-i18n-aria="a_voice">🗣️<small data-i18n="voice"></small></button></div>
+    <div class="group"><h3 data-i18n="language"></h3><div class="choices wrap" id="langs"></div></div>
+    <div class="group"><h3 data-i18n="theme"></h3>
       <div class="choices" id="themes">
-        <button class="choice" data-t="atlas"><span class="e">🗺️</span>Atlas</button>
-        <button class="choice" data-t="neon"><span class="e">✨</span>Néon</button>
-        <button class="choice" data-t="carte"><span class="e">📜</span>Vieille carte</button>
-        <button class="choice" data-t="bonbon"><span class="e">🍭</span>Bonbon</button>
-        <button class="choice" data-t="jungle"><span class="e">🌴</span>Jungle</button>
-        <button class="choice" data-t="banquise"><span class="e">❄️</span>Banquise</button>
-        <button class="choice" data-t="volcan"><span class="e">🌋</span>Volcan</button>
+        <button class="choice" data-t="atlas"><span class="e">🗺️</span><span data-i18n="th_atlas"></span></button>
+        <button class="choice" data-t="neon"><span class="e">✨</span><span data-i18n="th_neon"></span></button>
+        <button class="choice" data-t="carte"><span class="e">📜</span><span data-i18n="th_carte"></span></button>
+        <button class="choice" data-t="bonbon"><span class="e">🍭</span><span data-i18n="th_bonbon"></span></button>
+        <button class="choice" data-t="jungle"><span class="e">🌴</span><span data-i18n="th_jungle"></span></button>
+        <button class="choice" data-t="banquise"><span class="e">❄️</span><span data-i18n="th_banquise"></span></button>
+        <button class="choice" data-t="volcan"><span class="e">🌋</span><span data-i18n="th_volcan"></span></button>
       </div></div>
-    <p class="credits">Contours des départements : © IGN – Admin Express (Licence ouverte Etalab). Pays : Natural Earth.</p>
+    <p class="credits" data-i18n="credits"></p>
   </div>
 </div>
 
 <div class="screen hidden" id="passport">
   <div class="panel glass passpanel">
     <div class="passhead">
-      <div><div class="ptitle">🛂 Mon passeport</div><div id="ptotal"></div></div>
-      <button class="glass round" id="passclose" aria-label="Fermer">✕</button>
+      <div><div class="ptitle" data-i18n="pass_title"></div><div id="ptotal"></div></div>
+      <button class="glass round" id="passclose" aria-label="Fermer" data-i18n-aria="a_close">✕</button>
     </div>
     <div class="ptabs" id="ptabs"></div>
-    <div class="plegend"><span>★ une étoile par mode réussi (pays, capitale, drapeau, ville)</span><button id="pmapbtn">🗺️ Voir sur la carte</button></div>
+    <div class="plegend"><span data-i18n="pass_legend"></span><button id="pmapbtn" data-i18n="pass_map"></button></div>
     <div id="pgrid"></div>
   </div>
 </div>
@@ -174,26 +175,26 @@
 <div class="screen hidden" id="end">
   <div class="panel glass">
     <div id="endgoose"></div>
-    <div id="endtitle" style="font-size:28px;font-weight:800">Partie terminée !</div>
+    <div id="endtitle" style="font-size:28px;font-weight:800"></div>
     <div class="stars" id="stars"></div>
     <div class="bigscore" id="final">0</div>
     <div id="duel"></div>
-    <div style="color:var(--muted);font-weight:700" id="outof">points sur 10 000</div>
+    <div style="color:var(--muted);font-weight:700" id="outof"></div>
     <div id="newbest" style="font-weight:800;color:var(--good-d);min-height:26px;font-size:18px"></div>
     <div id="newstamps"></div>
     <div id="endmedals"></div>
     <div id="xpline"></div>
     <div id="recap"></div>
     <div class="stack">
-      <button class="btn" id="againbtn">Rejouer 🔁</button>
-      <button class="btn ghost" id="menubtn">Menu</button>
+      <button class="btn" id="againbtn"></button>
+      <button class="btn ghost" id="menubtn" data-i18n="menu"></button>
     </div>
   </div>
 </div>
 <div id="pmapbar" class="glass" hidden>
   <div class="pmtop">
-    <div><b id="pmapn"></b><small>Touche un pays pour voir son tampon</small></div>
-    <button class="btn small" id="pmapback">📖 Passeport</button>
+    <div><b id="pmapn"></b><small data-i18n="pmap_hint"></small></div>
+    <button class="btn small" id="pmapback" data-i18n="pmap_back"></button>
   </div>
   <div id="pmaplegend"></div>
 </div>
