@@ -1174,3 +1174,6 @@ try{
     addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 }catch(e){}
 nativeStart();
+// captures App Store (scripts/screenshots.mjs) : position à l'écran de la bonne réponse, seulement avec ?shot
+if(/[?&]shot\b/.test(location.search)) window.__shot={ target:()=>{ const q=game.list[game.i]; return d3.zoomTransform(svg.node()).apply(projection(targetOf(q))); }, q:()=>game&&game.list[game.i],
+  focus:(k=3)=>{ const [x,y]=projection(targetOf(game.list[game.i])); svg.call(zoom.transform,d3.zoomIdentity.translate(innerWidth/2,innerHeight*.52).scale(k).translate(-x,-y)); } };

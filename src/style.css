@@ -723,3 +723,8 @@ body:not(.ingame):not(.pmap) #zoombtns{display:none}
 /* changement de thème : on coupe le flou une image pour forcer Safari (iPad) à reconstruire
    ses calques, sinon certains panneaux floutés restent en rectangle noir */
 html.retheme *,html.retheme *::before{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;transition:none !important}
+
+/* grand iPad (12,9" / 13", ≥ 1000 × 1000) : l'interface (pas la carte) est agrandie, sinon tout paraît minuscule */
+@media (min-width:1000px) and (min-height:1000px){
+  #hud,#bottom,#zoombtns,#tabbar,#toast,#tip,.homewrap,.wizwrap,.splashwrap,.screen>.panel,#pmapbar,#pmapcard{zoom:1.3}
+}

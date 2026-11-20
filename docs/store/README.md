@@ -84,6 +84,6 @@ la version anglaise.
 
 ## Captures d'écran
 
-Exigées : iPhone 6,9" (1320 × 2868) et iPad 13" (2064 × 2752). À faire sur le simulateur Xcode
+Générées par `npm run build && node scripts/screenshots.mjs fr` dans `store-shots/` (iPhone 6,9" 1320 × 2868, 6,3" 1206 × 2622, 6,1" 1179 × 2556, iPad 13" 2064 × 2752). Sinon : simulateur Xcode
 (⌘S) ou avec Playwright sur la version web : menu, une question pays avec l'oie posée, la fiche
 résultat, le passeport, « Mon oie », une partie en zone France.
