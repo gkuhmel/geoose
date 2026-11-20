@@ -56,9 +56,10 @@ la carte au bon endroit. Aucun compte, aucune connexion réseau. »
 
 ### English
 
-- **Subtitle**: The geography game that travels
-- **Promotional text**: Land the goose in the right place and fill your passport with the whole world!
-- **Keywords**: geography,map,countries,capitals,flags,quiz,kids,world,school,atlas,continents,learn
+- **Subtitle** (30 max): Fly the goose around the world
+- **Promotional text**: Land the goose in the right place and fill your passport with stamps from all over the world!
+- **Keywords** (97/100): geography,map,countries,capitals,flags,quiz,kids,world,atlas,continents,learn,school,earth,trivia
+- **Review notes**: Offline geography game for kids: tap the map to drop the goose on the requested place (country, capital, flag…), then confirm. No account, no ads, no purchases, no network connection.
 - **Description**:
 
 > Drop your goose on the map… in the right place! 🪿🌍
@@ -69,6 +70,7 @@ la carte au bon endroit. Aucun compte, aucune connexion réseau. »
 >
 > • 197 countries, their capitals and flags, from "easy" to "expert"
 > • Big cities, islands, world wonders and animals
+> • France zone: departments and cities
 > • A passport to stamp, medals, and a goose to dress up (over 40 accessories!)
 > • Daily challenge, survival mode, quiz, and two-player games on one device
 > • Automatic review of mistakes to really improve
