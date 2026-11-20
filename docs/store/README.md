@@ -32,7 +32,7 @@ la carte au bon endroit. Aucun compte, aucune connexion réseau. »
 
 - **Sous-titre** (30 car. max) : Le jeu de géo qui fait voyager
 - **Texte promotionnel** : Fais atterrir l'oie au bon endroit et remplis ton passeport du monde entier !
-- **Mots-clés** (100 car.) : géographie,carte,pays,capitales,drapeaux,quiz,enfants,monde,école,atlas,continents,france,départements
+- **Mots-clés** (100 car.) : géographie,carte,pays,capitales,drapeaux,quiz,enfants,monde,école,continents,france,départements
 - **Description** :
 
 > Pose ton oie sur la carte… au bon endroit ! 🪿🌍
